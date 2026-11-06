@@ -44,6 +44,7 @@ export const Route = createFileRoute("/api/email-templates/")({
           const rows = await base
             .selectAll()
             .orderBy("updated_at", "desc")
+            .orderBy("id", "desc")
             .limit(pageSize)
             .offset(page * pageSize)
             .execute();
