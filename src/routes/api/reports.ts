@@ -38,6 +38,9 @@ export const Route = createFileRoute("/api/reports")({
             .selectFrom("report_definitions")
             .selectAll()
             .orderBy("created_at", "desc")
+            // A tie-breaker: rows seeded together share a timestamp, and without one the order of equal rows
+            // is not stable between pages, so offset pagination skips some and repeats others.
+            .orderBy("id", "desc")
             .limit(pageSize)
             .offset(page * pageSize)
             .execute();
