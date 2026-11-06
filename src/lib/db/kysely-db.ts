@@ -3,7 +3,7 @@
  * Config database: PostgreSQL only (via DATABASE_URL or POSTGRES_* env vars)
  */
 
-import { type Generated, Kysely, PostgresDialect } from "kysely";
+import { type Generated, Kysely, PostgresDialect, sql } from "kysely";
 import type { DatabaseClientType } from "@/types/database";
 import { Pool as PostgresPool } from "pg";
 import { bootstrapSchema } from "./bootstrap";
@@ -654,11 +654,34 @@ function initializeDatabase(): KyselyDB {
 
 let bootstrapPromise: Promise<void> | null = null;
 
+/** Arbitrary, stable: the key every process serialises its schema bootstrap on. */
+const BOOTSTRAP_LOCK_KEY = 7316504221;
+
+/**
+ * Run the schema bootstrap with the whole database holding one lock.
+ *
+ * `bootstrapSchema` is idempotent, but not concurrently: the web server and the reporting-pack
+ * seeder (a second process, started beside it by compose) both call `getDb()` at start, each
+ * created tables the other was also creating, and one of them failed part-way — leaving a schema
+ * with no `job_definitions` and no administrator ("relation does not exist", then "no users"). A
+ * session advisory lock makes the second process wait for the first and then find nothing to do.
+ */
+async function bootstrapOnce(database: KyselyDB): Promise<void> {
+  await database.connection().execute(async (lock) => {
+    await sql`select pg_advisory_lock(${BOOTSTRAP_LOCK_KEY})`.execute(lock);
+    try {
+      await bootstrapSchema(database);
+    } finally {
+      await sql`select pg_advisory_unlock(${BOOTSTRAP_LOCK_KEY})`.execute(lock);
+    }
+  });
+}
+
 export function getDb(): KyselyDB {
   if (!db) {
     db = initializeDatabase();
 
-    bootstrapPromise = bootstrapSchema(db)
+    bootstrapPromise = bootstrapOnce(db)
       .then(() => console.log("[db] Database ready"))
       .catch((err) => console.error("[db] Bootstrap failed:", err));
 
