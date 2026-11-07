@@ -35,6 +35,7 @@ import {
   REDACT_KEYS,
 } from "./log-spec";
 import { currentRequestContext } from "./request-context";
+import { runShutdownHooks } from "./shutdown";
 import { keepDebug, sampleRate } from "./trace-context";
 
 export type LogFields = Record<string, unknown>;
@@ -468,7 +469,7 @@ export function installProcessLogging(): void {
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.on(signal, () => {
       getRoot().info({ event: "app.shutdown", channel: "app", signal, uptimeMs: Date.now() - startedAt }, EVENTS["app.shutdown"].message);
-      void flushLogs().finally(() => {
+      void Promise.allSettled([flushLogs(), runShutdownHooks()]).finally(() => {
         if (process.listenerCount(signal) <= 1) process.exit(0);
       });
     });

@@ -93,6 +93,10 @@ services:
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
       PORT: 3000
 
+      # Tracing: set to http://otel-collector:4318 with `--profile observability` (see below).
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-enterprise-reporting}
+
       # Authentication
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_URL: ${AUTH_URL}
@@ -136,6 +140,36 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - ers-network
+
+  # ── Tracing (optional) ──────────────────────────────────────────────────────
+  # docker compose --profile observability up -d
+  # then set OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 for the app (below) and open
+  # the Jaeger UI on http://localhost:16686. Nothing here starts without the profile, and the
+  # app exports nothing until the variable is set.
+  otel-collector:
+    image: otel/opentelemetry-collector:0.116.1
+    container_name: ers-otel-collector
+    profiles: ["observability"]
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./docker/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - jaeger
+    networks:
+      - ers-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.65.0
+    container_name: ers-jaeger
+    profiles: ["observability"]
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
     networks:
       - ers-network
 

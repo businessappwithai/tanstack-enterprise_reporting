@@ -27,6 +27,7 @@ import { getLogger } from "@/lib/logging/logger";
 import { ERROR_CATEGORIES } from "@/lib/logging/log-spec";
 import { acceptRequestId, type RequestContext, runWithRequestContext } from "@/lib/logging/request-context";
 import { parseTraceparent } from "@/lib/logging/trace-context";
+import { initTracing, startServerSpan, tracingEnabled } from "@/lib/telemetry/tracing";
 import { json } from "@/lib/server/response";
 
 const SLOW_MS = Number(process.env.HTTP_SLOW_REQUEST_MS ?? 5000);
@@ -82,12 +83,25 @@ export function withApiHandler<C extends { request: Request } = any>(
       userId: null,
       ...(trace && { traceId: trace.traceId, spanId: trace.spanId }),
     };
+    // With a collector configured (OTEL_EXPORTER_OTLP_ENDPOINT), this request is a server span.
+    // Its ids replace the caller's on the log lines, so a trace and its lines share one id.
+    if (tracingEnabled()) await initTracing();
+    const span = startServerSpan(
+      `${request.method} ${route}`,
+      { "http.request.method": request.method, "http.route": route, "request.id": requestId },
+      request.headers
+    );
+    if (span) {
+      requestContext.traceId = span.traceId;
+      requestContext.spanId = span.spanId;
+    }
+
     return runWithRequestContext(requestContext, async () => {
       let response: Response;
       let thrown: unknown;
 
       try {
-        response = await handler(context);
+        response = await (span ? span.run(() => handler(context)) : handler(context));
       } catch (error) {
         thrown = error;
         const classified = classify(error);
@@ -108,6 +122,7 @@ export function withApiHandler<C extends { request: Request } = any>(
 
       const status = response.status;
       const durationMs = Date.now() - startedAt;
+      span?.end({ status, err: thrown ?? requestContext.failure?.err });
 
       if (status >= 400) {
         const category = thrown ? classify(thrown).category : categoryForStatus(status);

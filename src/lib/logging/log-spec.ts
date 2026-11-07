@@ -378,6 +378,12 @@ export const EVENTS = {
     message: "Log level changed",
     fields: ["channel", "from", "to", "by"],
   },
+  "telemetry.start_failed": {
+    channel: "app",
+    level: "warn",
+    message: "Tracing could not be started; requests run untraced",
+    fields: ["err"],
+  },
   "logging.overrides.unavailable": {
     channel: "logging",
     level: "warn",
