@@ -1,3 +1,4 @@
+import { readApiError, retryUnlessRefused } from "@/lib/reporting/api-error";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { Download, RefreshCw, Settings } from "lucide-react";
@@ -55,13 +56,12 @@ function ChartViewerPage() {
         }
       }
       const res = await fetch(url.toString());
-      if (!res.ok) {
-        throw new Error(`Failed to fetch chart data: ${res.statusText}`);
-      }
+      if (!res.ok) throw await readApiError(res, "Failed to load chart data");
       const data = await res.json();
       return data.data;
     },
     enabled: !!chartId,
+    retry: retryUnlessRefused,
     refetchInterval: chart?.refresh_interval ? chart.refresh_interval * 1000 : undefined,
   });
 

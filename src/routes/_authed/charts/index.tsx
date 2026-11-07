@@ -381,9 +381,9 @@ RULES:
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
                     <TableHead>Query</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -391,12 +391,6 @@ RULES:
                   {charts?.map((chart) => (
                     <TableRow key={chart.id}>
                       <TableCell className="font-medium">{chart.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                          {chartTypeIcons[chart.chart_type]}
-                          {chart.chart_type}
-                        </Badge>
-                      </TableCell>
                       <TableCell>
                         {chart.saved_query_id ? (
                           <Badge variant="secondary">Linked</Badge>
@@ -406,6 +400,12 @@ RULES:
                       </TableCell>
                       <TableCell className="text-tremor-content">
                         {formatDateTime(chart.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                          {chartTypeIcons[chart.chart_type]}
+                          {chart.chart_type}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
