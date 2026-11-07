@@ -12,6 +12,7 @@ import {
   useState,
   useCallback,
 } from "react";
+import { getLogger } from "@/lib/logging/logger";
 
 interface DataSource {
   id: string;
@@ -56,7 +57,7 @@ export function ActiveDataSourceProvider({ children }: { children: ReactNode }) 
         setActiveDataSourceState(null);
       }
     } catch (error) {
-      console.error("Error fetching active data source:", error);
+      getLogger("client").note("error", "Error fetching active data source:", { err: error });
       setActiveDataSourceState(null);
     } finally {
       setIsLoading(false);
@@ -86,7 +87,7 @@ export function ActiveDataSourceProvider({ children }: { children: ReactNode }) 
         throw new Error(data.error?.message || "Failed to set active data source");
       }
     } catch (error) {
-      console.error("Error setting active data source:", error);
+      getLogger("client").note("error", "Error setting active data source:", { err: error });
       throw error;
     }
   };

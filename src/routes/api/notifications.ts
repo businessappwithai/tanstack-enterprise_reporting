@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 
 async function getSession(request: Request) {
@@ -9,7 +11,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/notifications")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/notifications", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -22,16 +24,9 @@ export const Route = createFileRoute("/api/notifications")({
           // Notifications table not yet migrated — return empty array (header expects array)
           return json({ success: true, data: [] });
         } catch (error) {
-          console.error("Error fetching notifications:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to fetch notifications" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch notifications");
         }
-      },
+      }),
     },
   },
 });

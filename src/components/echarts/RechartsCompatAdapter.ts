@@ -9,6 +9,7 @@ import type {
   ChartType as WasmChartType,
   DataMapping as WasmDataMapping,
 } from "@/types/charts";
+import { getLogger } from "@/lib/logging/logger";
 
 const CHART_TYPE_MAP: Record<string, WasmChartType> = {
   bar: "bar",
@@ -74,15 +75,10 @@ export function convertRechartsToECharts(
       : undefined,
   };
 
-  console.log("[RechartsCompatAdapter] Input:", { chartType, chartConfig, dataMapping });
-  console.log("[RechartsCompatAdapter] Output:", result);
-  console.log("[RechartsCompatAdapter] Series colors:", seriesColors);
-  console.log(
-    "[RechartsCompatAdapter] Stacked value:",
-    result.stacked,
-    "Type:",
-    typeof result.stacked
-  );
+  getLogger("client").note("debug", "[RechartsCompatAdapter] Input:", { detail: [{ chartType, chartConfig, dataMapping }] });
+  getLogger("client").note("debug", "[RechartsCompatAdapter] Output:", { detail: [result] });
+  getLogger("client").note("debug", "[RechartsCompatAdapter] Series colors:", { detail: [seriesColors] });
+  getLogger("client").note("debug", "[RechartsCompatAdapter] Stacked value:", { detail: [result.stacked, "Type:", typeof result.stacked] });
 
   return result;
 }

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
@@ -21,7 +23,7 @@ function withoutConnectionConfig<T extends { connection_config?: unknown }>(row:
 export const Route = createFileRoute("/api/data-sources/active")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/data-sources/active", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -49,20 +51,11 @@ export const Route = createFileRoute("/api/data-sources/active")({
             },
           });
         } catch (error) {
-          console.error("Error fetching active data source:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                message: "Failed to fetch active data source",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch active data source");
         }
-      },
+      }),
 
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/data-sources/active", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -111,18 +104,9 @@ export const Route = createFileRoute("/api/data-sources/active")({
             },
           });
         } catch (error) {
-          console.error("Error setting active data source:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                message: "Failed to set active data source",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to set active data source");
         }
-      },
+      }),
     },
   },
 });

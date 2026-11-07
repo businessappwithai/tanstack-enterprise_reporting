@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import {
   CopilotRuntime,
@@ -100,7 +103,7 @@ async function handleTranscribe(request: Request): Promise<Response> {
     try {
       wavBlob = isWav ? audioFile : await convertToWav(audioFile);
     } catch (convErr) {
-      console.error("[CopilotKit Transcribe] Audio conversion failed:", convErr);
+      recordFailure(convErr, "[CopilotKit Transcribe] Audio conversion failed:");
       return new Response(JSON.stringify({ text: "" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -118,7 +121,7 @@ async function handleTranscribe(request: Request): Promise<Response> {
     });
 
     if (!res.ok) {
-      console.error("[CopilotKit Transcribe] Mastra STT error:", await res.text().catch(() => ""));
+      getLogger("voice").event("voice.transcription.failed", { reason: `Mastra STT answered ${res.status}` });
       return new Response(JSON.stringify({ text: "" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -133,7 +136,7 @@ async function handleTranscribe(request: Request): Promise<Response> {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[CopilotKit Transcribe] Error:", error);
+    recordFailure(error, "[CopilotKit Transcribe] Error:");
     return new Response(JSON.stringify({ text: "" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -166,7 +169,7 @@ async function handleTts(request: Request): Promise<Response> {
       headers: { "Content-Type": res.headers.get("Content-Type") || "audio/mpeg" },
     });
   } catch (error) {
-    console.error("[CopilotKit TTS] Error:", error);
+    recordFailure(error, "[CopilotKit TTS] Error:");
     return new Response(JSON.stringify({ error: "TTS service unavailable" }), {
       status: 503,
       headers: { "Content-Type": "application/json" },
@@ -200,7 +203,7 @@ async function requireSession(request: Request): Promise<Response | null> {
 export const Route = createFileRoute("/api/copilotkit/$")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/copilotkit/$", async ({ request }) => {
         const refusal = await requireSession(request);
         if (refusal) return refusal;
 
@@ -212,8 +215,8 @@ export const Route = createFileRoute("/api/copilotkit/$")({
           });
         }
         return getHandler().handleRequest(request);
-      },
-      POST: async ({ request }) => {
+      }),
+      POST: withApiHandler("/api/copilotkit/$", async ({ request }) => {
         const refusal = await requireSession(request);
         if (refusal) return refusal;
 
@@ -231,7 +234,7 @@ export const Route = createFileRoute("/api/copilotkit/$")({
           });
         }
         return getHandler().handleRequest(request);
-      },
+      }),
     },
   },
 });

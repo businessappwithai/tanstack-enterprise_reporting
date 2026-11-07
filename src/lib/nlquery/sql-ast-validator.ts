@@ -11,6 +11,7 @@
 import { parse } from "pgsql-ast-parser";
 import { checkEntityAccess } from "@/lib/permissions/ds-rbac";
 import type { User } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface SQLAccessValidation {
   isValid: boolean;
@@ -95,7 +96,7 @@ export function extractTablesFromSQL(sql: string): string[] {
 
     return Array.from(tables);
   } catch (error) {
-    console.error("[SQLValidator] Failed to parse SQL with AST:", error);
+    getLogger("nlquery").note("error", "[SQLValidator] Failed to parse SQL with AST:", { err: error });
     return [];
   }
 }
@@ -174,7 +175,7 @@ export async function validateSQLRBACAccess(
       }),
     };
   } catch (error) {
-    console.error("[SQLValidator] RBAC validation error:", error);
+    getLogger("nlquery").note("error", "[SQLValidator] RBAC validation error:", { err: error });
     return {
       isValid: false,
       accessAllowed: false,
@@ -201,7 +202,7 @@ export async function isTableAccessible(
     ]);
     return !!result?.hasAccess;
   } catch (error) {
-    console.error("[SQLValidator] Table access check failed:", error);
+    getLogger("nlquery").note("error", "[SQLValidator] Table access check failed:", { err: error });
     return false;
   }
 }

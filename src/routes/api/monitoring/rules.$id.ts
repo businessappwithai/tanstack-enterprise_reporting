@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
@@ -48,7 +49,7 @@ function deserializeRule(row: Record<string, unknown>) {
 export const Route = createFileRoute("/api/monitoring/rules/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/monitoring/rules/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -69,9 +70,9 @@ export const Route = createFileRoute("/api/monitoring/rules/$id")({
         } catch (err) {
           return json({ error: err instanceof Error ? err.message : "Error" }, { status: 500 });
         }
-      },
+      }),
 
-      PUT: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      PUT: withApiHandler("/api/monitoring/rules/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -148,9 +149,9 @@ export const Route = createFileRoute("/api/monitoring/rules/$id")({
         } catch (err) {
           return json({ error: err instanceof Error ? err.message : "Error" }, { status: 500 });
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      DELETE: withApiHandler("/api/monitoring/rules/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -185,9 +186,9 @@ export const Route = createFileRoute("/api/monitoring/rules/$id")({
         } catch (err) {
           return json({ error: err instanceof Error ? err.message : "Error" }, { status: 500 });
         }
-      },
+      }),
 
-      PATCH: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      PATCH: withApiHandler("/api/monitoring/rules/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -282,7 +283,7 @@ export const Route = createFileRoute("/api/monitoring/rules/$id")({
         } catch (err) {
           return json({ error: err instanceof Error ? err.message : "Error" }, { status: 500 });
         }
-      },
+      }),
     },
   },
 });

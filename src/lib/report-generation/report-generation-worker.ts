@@ -28,6 +28,7 @@ import { logAudit } from "@/lib/security/audit";
 import { resolveRBACContext, detectRBACDrift } from "@/lib/monitoring/rbac-workflow-context";
 import { renderChartPng } from "./chart-image";
 import type { NLReportDefinition, OutputFormat, ReportGenerationResult } from "./types";
+import { getLogger } from "@/lib/logging/logger";
 
 const OUTPUT_DIR = process.env.JOB_OUTPUT_PATH || "./job-outputs";
 const REPORT_ROW_LIMIT = parseInt(process.env.REPORT_ROW_LIMIT || "10000", 10);
@@ -613,7 +614,7 @@ export async function executeReportGeneration(params: {
     };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error("[report-generation-worker] Failed:", errMsg);
+    getLogger("report").note("error", "[report-generation-worker] Failed:", { detail: [errMsg] });
 
     if (definition) {
       await (db as any)

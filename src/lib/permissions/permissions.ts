@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db/config";
 import type { PermissionLevel, ResourceType } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface PermissionCheck {
   resourceType: ResourceType;
@@ -29,7 +30,7 @@ export async function getUserPermissions(userId: string) {
         const perms = JSON.parse(role.permissions);
         rolePermissions.push(...perms);
       } catch (e) {
-        console.error("Failed to parse permissions for role:", role.name, e);
+        getLogger("auth").note("error", "Failed to parse permissions for role:", { detail: [role.name, e] });
       }
     }
   }

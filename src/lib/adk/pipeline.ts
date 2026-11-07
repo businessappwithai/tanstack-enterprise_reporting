@@ -28,6 +28,7 @@ import { logAudit } from "@/lib/security/audit";
 import { AUDIT_ACTIONS } from "@/types/actions";
 import type { ADKIntent, ADKPipelineResult, ADKPreview, ADKStoredIntent } from "@/types/adk";
 import type { SecurityContext } from "@/lib/auth/rbac";
+import { getLogger } from "@/lib/logging/logger";
 
 // ─── ADK Intent Store (inline — avoids circular import with monitoring-repository) ─
 
@@ -288,10 +289,7 @@ export async function runADKPipeline(
       );
     } catch (supervisorErr) {
       // Fallback: use the direct SQL generation tool if supervisor is unreachable
-      console.warn(
-        "[ADK] Mastra supervisor unreachable, falling back to direct SQL generation:",
-        supervisorErr
-      );
+      getLogger("nlquery").note("warn", "[ADK] Mastra supervisor unreachable, falling back to direct SQL generation:", { err: supervisorErr });
       const sqlResult = await executeSqlGenerate({
         nlQuestion: nlRequest,
         schemaText: truncatedSchema,

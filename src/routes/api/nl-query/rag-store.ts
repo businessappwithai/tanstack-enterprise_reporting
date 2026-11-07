@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
@@ -16,7 +18,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/nl-query/rag-store")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/nl-query/rag-store", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -72,16 +74,9 @@ export const Route = createFileRoute("/api/nl-query/rag-store")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("RAG store error:", error);
-          return json(
-            {
-              success: false,
-              error: { message: error instanceof Error ? error.message : "Failed to store query" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to store query");
         }
-      },
+      }),
     },
   },
 });

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { saveFieldInstruction, getSchemaInstructions } from "@/server-fns/schema-instructions";
 import type { FieldInstruction } from "@/server-fns/schema-instructions";
+import { getLogger } from "@/lib/logging/logger";
 
 interface FieldInstructionEditorProps {
   dataSourceId?: string;
@@ -87,7 +88,7 @@ export function FieldInstructionEditor({
           }
         }
       } catch (err) {
-        console.error("Failed to fetch instructions:", err);
+        getLogger("client").note("error", "Failed to fetch instructions:", { err: err });
       }
     };
 

@@ -1,6 +1,7 @@
 import pgPromise from "pg-promise";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import type { DataSource } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 // dynamic database schema
 type AnyKysely = Kysely<any>;
@@ -21,11 +22,11 @@ interface PgConnectionConfig {
 const pgp = pgPromise({
   // Enable detailed error logging
   error(err, e) {
-    console.error("[pgPromise Error]", {
+    getLogger("datasource").note("error", "[pgPromise Error]", { detail: [{
       message: err.message,
       code: (err as any).code,
       query: e?.query,
-    });
+    }] });
   },
 
   // Runs for each new connection
@@ -85,7 +86,7 @@ export async function createPgPromiseConnection(config: PgConnectionConfig): Pro
       dialect: new PostgresDialect({ pool }),
     });
   } catch (error) {
-    console.error("[pgPromiseManager] Failed to create connection:", error);
+    getLogger("datasource").note("error", "[pgPromiseManager] Failed to create connection:", { err: error });
     throw error;
   }
 }

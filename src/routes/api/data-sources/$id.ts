@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { DataSourceService } from "@/lib/services/data-source.service";
@@ -24,7 +27,7 @@ function checkPermission(session: any, createdBy: string | null): boolean {
 export const Route = createFileRoute("/api/data-sources/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/data-sources/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -47,24 +50,16 @@ export const Route = createFileRoute("/api/data-sources/$id")({
             resourceId: params.id,
             details: { operation: "getDataSource", name: dataSource.name },
           }).catch((err) => {
-            console.error("Audit log error:", err);
+            getLogger("audit").event("audit.write.failed", { resource: "data_source", err });
           });
 
           return json(dataSource);
         } catch (error) {
-          console.error("Data source get error:", error);
-          return json(
-            {
-              error: {
-                message: error instanceof Error ? error.message : "Internal server error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
 
-      PUT: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      PUT: withApiHandler("/api/data-sources/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -100,19 +95,11 @@ export const Route = createFileRoute("/api/data-sources/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Data source update error:", error);
-          return json(
-            {
-              error: {
-                message: error instanceof Error ? error.message : "Internal server error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
 
-      PATCH: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      PATCH: withApiHandler("/api/data-sources/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -146,19 +133,11 @@ export const Route = createFileRoute("/api/data-sources/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Data source update error:", error);
-          return json(
-            {
-              error: {
-                message: error instanceof Error ? error.message : "Internal server error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      DELETE: withApiHandler("/api/data-sources/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -185,17 +164,9 @@ export const Route = createFileRoute("/api/data-sources/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Data source delete error:", error);
-          return json(
-            {
-              error: {
-                message: error instanceof Error ? error.message : "Internal server error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
     },
   },
 });

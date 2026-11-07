@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { runADKPipeline } from "@/lib/adk/pipeline";
@@ -15,7 +17,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/adk/analyze-intent")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/adk/analyze-intent", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -53,10 +55,10 @@ export const Route = createFileRoute("/api/adk/analyze-intent")({
           });
         } catch (err) {
           const msg = err instanceof Error ? err.message : "ADK pipeline failed";
-          console.error("[/api/adk/analyze-intent]", err);
+          recordFailure(err, "[/api/adk/analyze-intent]");
           return json({ success: false, error: msg }, { status: 500 });
         }
-      },
+      }),
     },
   },
 });

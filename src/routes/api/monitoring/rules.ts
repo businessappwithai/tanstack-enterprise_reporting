@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
@@ -51,7 +53,7 @@ function deserializeRule(row: Record<string, unknown>) {
 export const Route = createFileRoute("/api/monitoring/rules")({
   server: {
     handlers: {
-      GET: async ({ request }: { request: Request }) => {
+      GET: withApiHandler("/api/monitoring/rules", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -129,9 +131,9 @@ export const Route = createFileRoute("/api/monitoring/rules")({
             { status: 500 }
           );
         }
-      },
+      }),
 
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/monitoring/rules", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -280,10 +282,7 @@ export const Route = createFileRoute("/api/monitoring/rules")({
               rule.trigger_schedule_id = scheduleId;
             }
           } catch (scheduleErr) {
-            console.warn(
-              "[monitoring/rules POST] Trigger.dev schedule failed (non-fatal):",
-              scheduleErr
-            );
+            getLogger("jobs").event("jobs.schedule.failed", { target: "monitoring rule", err: scheduleErr });
           }
 
           await logAudit({
@@ -301,7 +300,7 @@ export const Route = createFileRoute("/api/monitoring/rules")({
             { status: 500 }
           );
         }
-      },
+      }),
     },
   },
 });

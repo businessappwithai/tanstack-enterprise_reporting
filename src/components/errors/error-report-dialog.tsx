@@ -14,6 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { ErrorLog } from "@/lib/errors/error-logger";
 import { errorLogger } from "@/lib/errors/error-logger";
+import { getLogger } from "@/lib/logging/logger";
 
 interface ErrorReportDialogProps {
   open: boolean;
@@ -46,7 +47,7 @@ export function ErrorReportDialog({ open, onOpenChange, errorLog }: ErrorReportD
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to copy to clipboard:", err);
+      getLogger("client").note("error", "Failed to copy to clipboard:", { err: err });
     }
   };
 

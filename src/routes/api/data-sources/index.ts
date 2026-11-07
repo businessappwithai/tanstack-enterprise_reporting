@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { DataSourceService } from "@/lib/services/data-source.service";
@@ -18,7 +21,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/data-sources/")({
   server: {
     handlers: {
-      GET: async ({ request }: { request: Request }) => {
+      GET: withApiHandler("/api/data-sources/", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -35,7 +38,7 @@ export const Route = createFileRoute("/api/data-sources/")({
             resourceType: "data_source",
             details: { operation: "listDataSources", count: dataSources.length },
           }).catch((err) => {
-            console.error("Audit log error:", err);
+            getLogger("audit").event("audit.write.failed", { resource: "data_source", err });
           });
 
           return json({
@@ -46,19 +49,11 @@ export const Route = createFileRoute("/api/data-sources/")({
             },
           });
         } catch (error) {
-          console.error("Data sources list error:", error);
-          return json(
-            {
-              error: {
-                message: error instanceof Error ? error.message : "Internal server error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
 
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/data-sources/", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -86,17 +81,9 @@ export const Route = createFileRoute("/api/data-sources/")({
 
           return json({ success: true, item: safeDataSource }, { status: 201 });
         } catch (error) {
-          console.error("Data sources create error:", error);
-          return json(
-            {
-              error: {
-                message: error instanceof Error ? error.message : "Internal server error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
     },
   },
 });

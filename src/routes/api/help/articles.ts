@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { getDb, waitForDatabaseReady } from "@/lib/db/kysely-db";
 
@@ -10,7 +12,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/help/articles")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/help/articles", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -44,16 +46,9 @@ export const Route = createFileRoute("/api/help/articles")({
 
           return json({ success: true, data: filtered });
         } catch (error) {
-          console.error("Error fetching help articles:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to fetch help articles" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch help articles");
         }
-      },
+      }),
     },
   },
 });

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { refuseWithoutPermission } from "@/lib/permissions/resource-guard";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
@@ -14,7 +16,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/metadata/entities")({
   server: {
     handlers: {
-      GET: async ({ request }: { request: Request }) => {
+      GET: withApiHandler("/api/metadata/entities", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -45,17 +47,9 @@ export const Route = createFileRoute("/api/metadata/entities")({
             },
           });
         } catch (error) {
-          console.error("[MetadataEntities API] Error:", error);
-          return json(
-            {
-              error: {
-                message: error instanceof Error ? error.message : "Failed to fetch entities",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch entities");
         }
-      },
+      }),
     },
   },
 });

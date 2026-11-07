@@ -22,6 +22,7 @@ import type {
 } from "@/types/database";
 import type { ActiveFilter } from "@/types/filters";
 import { useDashboardState } from "./DashboardState";
+import { getLogger } from "@/lib/logging/logger";
 
 interface WidgetCardProps {
   widget: DashboardWidget;
@@ -192,7 +193,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
           />
         );
       } catch (error) {
-        console.error("Error rendering chart:", error);
+        getLogger("client").note("error", "Error rendering chart:", { err: error });
         return (
           <div className="flex items-center justify-center h-full text-destructive text-sm">
             Error rendering chart
@@ -237,7 +238,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
           </div>
         );
       } catch (error) {
-        console.error("Error rendering report:", error);
+        getLogger("client").note("error", "Error rendering report:", { err: error });
         return (
           <div className="flex items-center justify-center h-full text-destructive text-sm">
             Error rendering report

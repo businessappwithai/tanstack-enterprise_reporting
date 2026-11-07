@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { refuseWithoutDataSourcePermission } from "@/lib/permissions/data-source-guard";
 import { auth } from "@/lib/auth/config";
@@ -11,7 +13,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/data-sources/upload")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/data-sources/upload", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -65,16 +67,9 @@ export const Route = createFileRoute("/api/data-sources/upload")({
             { status: 201 }
           );
         } catch (error) {
-          console.error("Error uploading data source:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to upload data source" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to upload data source");
         }
-      },
+      }),
     },
   },
 });

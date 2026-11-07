@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 
 async function getSession(_request: Request) {
@@ -9,7 +11,7 @@ async function getSession(_request: Request) {
 export const Route = createFileRoute("/api/charts/$id/filters")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/charts/$id/filters", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session) {
@@ -20,10 +22,10 @@ export const Route = createFileRoute("/api/charts/$id/filters")({
           // Charts can be extended with filter support later
           return json([]);
         } catch (error) {
-          console.error("Error fetching chart filters:", error);
+          recordFailure(error, "Error fetching chart filters:");
           return json({ error: "Failed to fetch chart filters" }, { status: 500 });
         }
-      },
+      }),
     },
   },
 });

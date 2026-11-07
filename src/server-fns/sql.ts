@@ -14,6 +14,7 @@ import { validateSQLWithAllowlist } from "@/lib/sql/antlr-validator";
 import { isReadOnlyQuery } from "@/lib/sql/validator";
 import { executeSqlSchema, validateSqlSchema, introspectSchemaSchema } from "@/lib/schemas/sql";
 import { withErrorHandler, NotFoundError } from "@/lib/server-fns/with-error-handler";
+import { getLogger } from "@/lib/logging/logger";
 
 const DEFAULT_TIMEOUT = 30000;
 
@@ -282,7 +283,7 @@ export const executeSql = createServerFn({
             totalRowCount = Number(countResult[0].total) || 0;
           }
         } catch (e) {
-          console.error("Could not count total rows:", e);
+          getLogger("sql").note("error", "Could not count total rows:", { err: e });
         }
 
         const tooLargeForInteractive = totalRowCount > MAX_CLIENT_ROWS;
@@ -448,7 +449,7 @@ export const introspectSchema = createServerFn({
       const { SyncService } = await import("@/lib/metadata/sync-service");
       syncResult = await SyncService.syncDataSource(dataSourceId, session.user.id);
     } catch (_e) {
-      console.error("[Schema Sync] Failed to sync metadata:", _e);
+      getLogger("sql").note("error", "[Schema Sync] Failed to sync metadata:", { detail: [_e] });
     }
 
     if (schema.tables.length === 0 && schema.views.length === 0) {

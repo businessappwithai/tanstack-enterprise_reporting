@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { saveTableInstruction, getSchemaInstructions } from "@/server-fns/schema-instructions";
 import type { TableInstruction } from "@/server-fns/schema-instructions";
+import { getLogger } from "@/lib/logging/logger";
 
 interface TableInstructionEditorProps {
   dataSourceId?: string;
@@ -56,7 +57,7 @@ export function TableInstructionEditor({
           );
         }
       } catch (err) {
-        console.error("Failed to fetch instructions:", err);
+        getLogger("client").note("error", "Failed to fetch instructions:", { err: err });
       }
     };
 

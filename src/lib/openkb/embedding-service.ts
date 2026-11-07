@@ -6,6 +6,7 @@
 
 import { createReasoningClient } from "@/lib/voice/llama-client";
 import { isLlamaReasoningAvailable } from "@/lib/voice/llama-client";
+import { getLogger } from "@/lib/logging/logger";
 
 export class EmbeddingService {
   private model: string;
@@ -37,7 +38,7 @@ export class EmbeddingService {
 
       const embedding = response.data[0]?.embedding;
       if (!embedding || embedding.length === 0) {
-        console.warn("[Embedding] No embedding returned from llama.cpp");
+        getLogger("nlquery").note("warn", "[Embedding] No embedding returned from llama.cpp");
         return [];
       }
 
@@ -50,7 +51,7 @@ export class EmbeddingService {
 
       return embedding;
     } catch (error) {
-      console.error("[Embedding] Failed to generate embedding:", error);
+      getLogger("nlquery").note("error", "[Embedding] Failed to generate embedding:", { err: error });
       return [];
     }
   }

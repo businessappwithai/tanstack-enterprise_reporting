@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { canConfigureReport } from "@/lib/permissions/report-ownership";
 import { refuseWithoutPermission } from "@/lib/permissions/resource-guard";
@@ -12,7 +14,7 @@ async function getSession(_request: Request) {
 export const Route = createFileRoute("/api/reports/$id/filters")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/reports/$id/filters", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session) {
@@ -49,12 +51,12 @@ export const Route = createFileRoute("/api/reports/$id/filters")({
 
           return json(filters);
         } catch (error) {
-          console.error("Error fetching report filters:", error);
+          recordFailure(error, "Error fetching report filters:");
           return json({ error: "Failed to fetch report filters" }, { status: 500 });
         }
-      },
+      }),
 
-      POST: async ({ request, params }) => {
+      POST: withApiHandler("/api/reports/$id/filters", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session) {
@@ -101,12 +103,12 @@ export const Route = createFileRoute("/api/reports/$id/filters")({
           await db.insertInto("report_filters").values(newReportFilter).execute();
           return json(newReportFilter, { status: 201 });
         } catch (error) {
-          console.error("Error adding report filter:", error);
+          recordFailure(error, "Error adding report filter:");
           return json({ error: "Failed to add report filter" }, { status: 500 });
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }) => {
+      DELETE: withApiHandler("/api/reports/$id/filters", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session) {
@@ -128,10 +130,10 @@ export const Route = createFileRoute("/api/reports/$id/filters")({
           await db.deleteFrom("report_filters").where("report_id", "=", reportId).execute();
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting report filters:", error);
+          recordFailure(error, "Error deleting report filters:");
           return json({ error: "Failed to delete report filters" }, { status: 500 });
         }
-      },
+      }),
     },
   },
 });

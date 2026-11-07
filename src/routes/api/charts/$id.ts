@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import {
   refuseUnlessOwnerOrAdmin,
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/charts/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/charts/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -44,15 +46,11 @@ export const Route = createFileRoute("/api/charts/$id")({
 
           return json({ success: true, data: chart });
         } catch (error) {
-          console.error("Error fetching chart:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to fetch chart" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch chart");
         }
-      },
+      }),
 
-      PUT: async ({ request, params }) => {
+      PUT: withApiHandler("/api/charts/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -136,15 +134,11 @@ export const Route = createFileRoute("/api/charts/$id")({
             .executeTakeFirst();
           return json({ success: true, data: chart });
         } catch (error) {
-          console.error("Error updating chart:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to update chart" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update chart");
         }
-      },
+      }),
 
-      PATCH: async ({ request, params }) => {
+      PATCH: withApiHandler("/api/charts/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -212,18 +206,11 @@ export const Route = createFileRoute("/api/charts/$id")({
 
           return json({ success: true, data: { id, is_public: isPublic } });
         } catch (error) {
-          console.error("Error updating chart visibility:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to update visibility" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update visibility");
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }) => {
+      DELETE: withApiHandler("/api/charts/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -265,13 +252,9 @@ export const Route = createFileRoute("/api/charts/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting chart:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to delete chart" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to delete chart");
         }
-      },
+      }),
     },
   },
 });

@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
 import { hasPermission } from "@/lib/permissions/permissions";
@@ -16,7 +18,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/jobs")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/jobs", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -56,15 +58,11 @@ export const Route = createFileRoute("/api/jobs")({
 
           return json({ success: true, data: { items: jobs, meta: { total, page, pageSize } } });
         } catch (error) {
-          console.error("Error fetching jobs:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to fetch jobs" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch jobs");
         }
-      },
+      }),
 
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/jobs", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -180,13 +178,9 @@ export const Route = createFileRoute("/api/jobs")({
 
           return json({ success: true, data: { id: jobId } }, { status: 201 });
         } catch (error) {
-          console.error("Error creating job:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to create job" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to create job");
         }
-      },
+      }),
     },
   },
 });

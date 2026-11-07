@@ -7,8 +7,13 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { getAuth } from "@/lib/auth/better-auth";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 
-const handler = ({ request }: { request: Request }) => getAuth().handler(request);
+// Wrapped so sign-in, sign-out and session calls get the same request line, request id and
+// failure envelope as every other route.
+const handler = withApiHandler("/api/auth/$", ({ request }: { request: Request }) =>
+  getAuth().handler(request)
+);
 
 export const Route = createFileRoute("/api/auth/$")({
   server: {

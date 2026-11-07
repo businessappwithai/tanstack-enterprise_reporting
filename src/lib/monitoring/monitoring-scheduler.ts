@@ -22,6 +22,7 @@ import { schedules } from "@trigger.dev/sdk/v3";
 import { getDb } from "@/lib/db/config";
 import { cronMatchesWithTimezone } from "@/lib/jobs/cron";
 import type { MonitoringRule, MonitoringEvaluatePayload } from "@/types/monitoring";
+import { getLogger } from "@/lib/logging/logger";
 
 // ────────────────────────────────────────────────────────────────────────────
 // scheduleMonitoringRule
@@ -52,10 +53,7 @@ export async function scheduleMonitoringRule(rule: MonitoringRule): Promise<stri
 
     scheduleId = created.id ?? null;
   } catch (err) {
-    console.warn(
-      `[monitoring-scheduler] schedules.create failed for rule ${rule.id} — Trigger.dev may not be configured in this environment:`,
-      err instanceof Error ? err.message : String(err)
-    );
+    getLogger("jobs").note("warn", `[monitoring-scheduler] schedules.create failed for rule ${rule.id} — Trigger.dev may not be configured in this environment:`, { detail: [err instanceof Error ? err.message : String(err)] });
     return null;
   }
 
@@ -71,10 +69,7 @@ export async function scheduleMonitoringRule(rule: MonitoringRule): Promise<stri
         .where("id", "=", rule.id)
         .execute();
     } catch (dbErr) {
-      console.error(
-        `[monitoring-scheduler] Failed to persist trigger_schedule_id for rule ${rule.id}:`,
-        dbErr instanceof Error ? dbErr.message : String(dbErr)
-      );
+      getLogger("jobs").note("error", `[monitoring-scheduler] Failed to persist trigger_schedule_id for rule ${rule.id}:`, { detail: [dbErr instanceof Error ? dbErr.message : String(dbErr)] });
       // Return the schedule ID anyway — the caller can retry persisting if needed
     }
   }
@@ -97,10 +92,7 @@ export async function unscheduleMonitoringRule(
   try {
     await schedules.del(triggerScheduleId);
   } catch (err) {
-    console.warn(
-      `[monitoring-scheduler] schedules.del failed for schedule ${triggerScheduleId} (rule ${ruleId}):`,
-      err instanceof Error ? err.message : String(err)
-    );
+    getLogger("jobs").note("warn", `[monitoring-scheduler] schedules.del failed for schedule ${triggerScheduleId} (rule ${ruleId}):`, { detail: [err instanceof Error ? err.message : String(err)] });
     // Still attempt to clear the DB record so the stale reference is removed
   }
 
@@ -115,10 +107,7 @@ export async function unscheduleMonitoringRule(
       .where("id", "=", ruleId)
       .execute();
   } catch (dbErr) {
-    console.error(
-      `[monitoring-scheduler] Failed to clear trigger_schedule_id for rule ${ruleId}:`,
-      dbErr instanceof Error ? dbErr.message : String(dbErr)
-    );
+    getLogger("jobs").note("error", `[monitoring-scheduler] Failed to clear trigger_schedule_id for rule ${ruleId}:`, { detail: [dbErr instanceof Error ? dbErr.message : String(dbErr)] });
     return false;
   }
 
@@ -137,10 +126,7 @@ export async function pauseSchedule(triggerScheduleId: string): Promise<boolean>
     await schedules.deactivate(triggerScheduleId);
     return true;
   } catch (err) {
-    console.warn(
-      `[monitoring-scheduler] schedules.deactivate failed for ${triggerScheduleId}:`,
-      err instanceof Error ? err.message : String(err)
-    );
+    getLogger("jobs").note("warn", `[monitoring-scheduler] schedules.deactivate failed for ${triggerScheduleId}:`, { detail: [err instanceof Error ? err.message : String(err)] });
     return false;
   }
 }
@@ -157,10 +143,7 @@ export async function resumeSchedule(triggerScheduleId: string): Promise<boolean
     await schedules.activate(triggerScheduleId);
     return true;
   } catch (err) {
-    console.warn(
-      `[monitoring-scheduler] schedules.activate failed for ${triggerScheduleId}:`,
-      err instanceof Error ? err.message : String(err)
-    );
+    getLogger("jobs").note("warn", `[monitoring-scheduler] schedules.activate failed for ${triggerScheduleId}:`, { detail: [err instanceof Error ? err.message : String(err)] });
     return false;
   }
 }
@@ -186,7 +169,7 @@ export function startOnPremiseCronRunner(): void {
   if (_onPremiseRunnerActive) return;
   _onPremiseRunnerActive = true;
 
-  console.log("[on-premise-cron] Starting monitoring cron runner (poll interval: 60s)");
+  getLogger("jobs").note("debug", "[on-premise-cron] Starting monitoring cron runner (poll interval: 60s)");
 
   const tick = async () => {
     const now = new Date();
@@ -209,7 +192,7 @@ export function startOnPremiseCronRunner(): void {
         .select(["id", "cron_expression", "timezone", "is_paused"])
         .execute();
     } catch (err) {
-      console.error("[on-premise-cron] Failed to load monitoring rules:", err);
+      getLogger("jobs").note("error", "[on-premise-cron] Failed to load monitoring rules:", { err: err });
     }
 
     const dueRules = rules.filter((r) => {
@@ -221,9 +204,7 @@ export function startOnPremiseCronRunner(): void {
     });
 
     if (dueRules.length > 0) {
-      console.log(
-        `[on-premise-cron] ${dueRules.length} monitoring rule(s) due at ${now.toISOString()}`
-      );
+      getLogger("jobs").note("debug", `[on-premise-cron] ${dueRules.length} monitoring rule(s) due at ${now.toISOString()}`);
 
       const { executeMonitoringEvaluation } = await import("@/lib/jobs/workers/monitoring-worker");
 
@@ -234,11 +215,9 @@ export function startOnPremiseCronRunner(): void {
               ruleId: rule.id,
               triggeredBy: "on_premise_cron",
             });
-            console.log(
-              `[on-premise-cron] rule=${rule.id} status=${result.status} value=${result.metricValue ?? "n/a"}`
-            );
+            getLogger("jobs").note("debug", `[on-premise-cron] rule=${rule.id} status=${result.status} value=${result.metricValue ?? "n/a"}`);
           } catch (err) {
-            console.error(`[on-premise-cron] rule=${rule.id} error:`, err);
+            getLogger("jobs").note("error", `[on-premise-cron] rule=${rule.id} error:`, { err: err });
           }
         })
       );
@@ -273,9 +252,7 @@ export function startOnPremiseCronRunner(): void {
     });
 
     if (dueReports.length > 0) {
-      console.log(
-        `[on-premise-cron] ${dueReports.length} scheduled report(s) due at ${now.toISOString()}`
-      );
+      getLogger("jobs").note("debug", `[on-premise-cron] ${dueReports.length} scheduled report(s) due at ${now.toISOString()}`);
 
       const { executeReportGeneration } = await import(
         "@/lib/report-generation/report-generation-worker"
@@ -288,11 +265,9 @@ export function startOnPremiseCronRunner(): void {
               reportDefinitionId: def.id,
               triggeredBy: "scheduled",
             });
-            console.log(
-              `[on-premise-cron] report=${def.id} status=${result.status} rows=${result.rowCount}`
-            );
+            getLogger("jobs").note("debug", `[on-premise-cron] report=${def.id} status=${result.status} rows=${result.rowCount}`);
           } catch (err) {
-            console.error(`[on-premise-cron] report=${def.id} error:`, err);
+            getLogger("jobs").note("error", `[on-premise-cron] report=${def.id} error:`, { err: err });
           }
         })
       );
@@ -306,12 +281,10 @@ export function startOnPremiseCronRunner(): void {
         );
         const result = await cleanupExpiredReportArtifacts();
         if (result.deletedRecords > 0) {
-          console.log(
-            `[on-premise-cron] Artifact cleanup: ${result.deletedFiles} files, ${result.deletedRecords} records deleted`
-          );
+          getLogger("jobs").note("debug", `[on-premise-cron] Artifact cleanup: ${result.deletedFiles} files, ${result.deletedRecords} records deleted`);
         }
       } catch (err) {
-        console.error("[on-premise-cron] Artifact cleanup failed:", err);
+        getLogger("jobs").note("error", "[on-premise-cron] Artifact cleanup failed:", { err: err });
       }
     }
   };
@@ -334,5 +307,5 @@ export function stopOnPremiseCronRunner(): void {
     _onPremiseRunnerHandle = null;
   }
   _onPremiseRunnerActive = false;
-  console.log("[on-premise-cron] Monitoring cron runner stopped");
+  getLogger("jobs").note("debug", "[on-premise-cron] Monitoring cron runner stopped");
 }

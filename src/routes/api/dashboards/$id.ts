@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import {
   refuseUnlessOwnerOrAdmin,
@@ -13,7 +16,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/dashboards/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/dashboards/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -44,18 +47,11 @@ export const Route = createFileRoute("/api/dashboards/$id")({
 
           return json({ success: true, data: dashboard });
         } catch (error) {
-          console.error("Error fetching dashboard:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to fetch dashboard" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch dashboard");
         }
-      },
+      }),
 
-      PUT: async ({ request, params }) => {
+      PUT: withApiHandler("/api/dashboards/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -123,7 +119,7 @@ export const Route = createFileRoute("/api/dashboards/$id")({
             action: "update",
             resourceType: "dashboard",
             resourceId: id,
-          }).catch((err) => console.error("Audit log error:", err));
+          }).catch((err) => getLogger("audit").event("audit.write.failed", { resource: "dashboard", err }));
 
           const dashboard = await db
             .selectFrom("dashboard_layouts")
@@ -132,18 +128,11 @@ export const Route = createFileRoute("/api/dashboards/$id")({
             .executeTakeFirst();
           return json({ success: true, data: dashboard });
         } catch (error) {
-          console.error("Error updating dashboard:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to update dashboard" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update dashboard");
         }
-      },
+      }),
 
-      PATCH: async ({ request, params }) => {
+      PATCH: withApiHandler("/api/dashboards/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -211,18 +200,11 @@ export const Route = createFileRoute("/api/dashboards/$id")({
 
           return json({ success: true, data: { id, is_public: isPublic } });
         } catch (error) {
-          console.error("Error updating dashboard visibility:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to update visibility" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update visibility");
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }) => {
+      DELETE: withApiHandler("/api/dashboards/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -264,16 +246,9 @@ export const Route = createFileRoute("/api/dashboards/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting dashboard:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to delete dashboard" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to delete dashboard");
         }
-      },
+      }),
     },
   },
 });

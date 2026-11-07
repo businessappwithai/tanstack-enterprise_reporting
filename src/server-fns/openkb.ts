@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/auth/middleware";
 import { getOpenKBClient } from "@/lib/openkb/openkb-client";
 import { logAudit } from "@/lib/security/audit";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface LogQueryInput {
   nlQuestion: string;
@@ -70,7 +71,7 @@ export const logQueryToOpenKB = createServerFn({
 
       return { queryId };
     } catch (error) {
-      console.error("[OpenKB] Failed to log query:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to log query:", { err: error });
       throw new Error("Failed to save query to knowledge base");
     }
   });
@@ -114,7 +115,7 @@ export const suggestFromOpenKB = createServerFn({
         })),
       };
     } catch (error) {
-      console.error("[OpenKB] Failed to get suggestions:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to get suggestions:", { err: error });
       return { suggestions: [] }; // Gracefully return empty suggestions
     }
   });
@@ -152,7 +153,7 @@ export const getRecentQueriesFromOpenKB = createServerFn({
           resultRowCount: q.resultRowCount,
         }));
       } catch (error) {
-        console.error("[OpenKB] Failed to get recent queries:", error);
+        getLogger("nlquery").note("error", "[OpenKB] Failed to get recent queries:", { err: error });
         return [];
       }
     }
@@ -183,7 +184,7 @@ export const getOpenKBStats = createServerFn({
         newestQuery: stats.newestQuery ? new Date(stats.newestQuery) : undefined,
       };
     } catch (error) {
-      console.error("[OpenKB] Failed to get stats:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to get stats:", { err: error });
       return { queryCount: 0 };
     }
   }

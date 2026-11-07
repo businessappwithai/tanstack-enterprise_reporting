@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db/config";
 import { encrypt, decrypt } from "@/lib/security/encryption";
 import { logAudit } from "@/lib/security/audit";
 import type { DataSource } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 /**
  * Parse PostgreSQL connection string into config object
@@ -75,7 +76,7 @@ export class DataSourceService {
         // is_inspected not in generated Kysely types
         query = (query as any).where("is_inspected", "=", true);
       } catch (err) {
-        console.error("Error filtering by is_inspected:", err);
+        getLogger("datasource").note("error", "Error filtering by is_inspected:", { err: err });
         // If error, just return all data sources (fall back)
       }
     }
@@ -113,7 +114,7 @@ export class DataSourceService {
       try {
         result.connection_config = JSON.parse(decrypt(dataSource.connection_config));
       } catch (e) {
-        console.error("Failed to decrypt connection config:", e);
+        getLogger("datasource").note("error", "Failed to decrypt connection config:", { err: e });
       }
     }
 
@@ -178,7 +179,7 @@ export class DataSourceService {
       resourceId: id,
       details: { name, clientType },
     }).catch((err) => {
-      console.error("Audit log error:", err);
+      getLogger("datasource").note("error", "Audit log error:", { err: err });
     });
 
     const created = await this.getById(id);
@@ -255,7 +256,7 @@ export class DataSourceService {
       resourceId: id,
       details: { fields: Object.keys(updateData).filter((k) => k !== "updated_at") },
     }).catch((err) => {
-      console.error("Audit log error:", err);
+      getLogger("datasource").note("error", "Audit log error:", { err: err });
     });
 
     const updated = await this.getById(id);
@@ -300,7 +301,7 @@ export class DataSourceService {
       resourceId: id,
       details: { operation: "soft_delete" },
     }).catch((err) => {
-      console.error("Audit log error:", err);
+      getLogger("datasource").note("error", "Audit log error:", { err: err });
     });
   }
 

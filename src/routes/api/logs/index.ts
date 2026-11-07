@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
 import { allowClientLog, clientLogSchema, withClientSource } from "@/lib/logging/client-log";
@@ -14,7 +16,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/logs/")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/logs/", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -82,21 +84,11 @@ export const Route = createFileRoute("/api/logs/")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("[LOGS API ERROR]", error);
-          return json(
-            {
-              success: false,
-              error: {
-                code: "ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Unknown error");
         }
-      },
+      }),
 
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/logs/", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -113,6 +105,9 @@ export const Route = createFileRoute("/api/logs/")({
           const level = url.searchParams.get("level");
           const component = url.searchParams.get("component");
           const userId = url.searchParams.get("userId");
+          const requestId = url.searchParams.get("requestId");
+          const category = url.searchParams.get("category");
+          const code = url.searchParams.get("code");
           const limit = validatePageSize(parseInt(url.searchParams.get("limit") || "100", 10));
           const offset = parseInt(url.searchParams.get("offset") || "0", 10);
 
@@ -126,10 +121,10 @@ export const Route = createFileRoute("/api/logs/")({
           const filterByUserId = userId && isAdmin ? userId : session.user.id;
 
           // ── 1. application logs (SQL editor executions) ──────────────────────
-          let query = db
-            .selectFrom("logs")
-            .selectAll()
-            .where("user_id", "=", filterByUserId as any);
+          let query = db.selectFrom("logs").selectAll();
+          // An administrator looking a request up by its reference sees it whoever made it:
+          // the reference is what a person reads out of an error, and it is not guessable.
+          if (!(requestId && isAdmin)) query = query.where("user_id", "=", filterByUserId as any);
 
           if (level && level !== "info") {
             query = query.where("level", "=", level);
@@ -137,6 +132,10 @@ export const Route = createFileRoute("/api/logs/")({
           if (component) {
             query = query.where("component", "=", component);
           }
+          // Quote the reference an error showed to find what happened to that request.
+          if (requestId) query = query.where("request_id", "=", requestId.slice(0, 64));
+          if (category) query = query.where("category", "=", category);
+          if (code) query = query.where("code", "=", code);
 
           const appLogs = await query
             .orderBy("timestamp", "desc")
@@ -154,7 +153,10 @@ export const Route = createFileRoute("/api/logs/")({
             auditQuery = auditQuery.where("resource_type", "=", component as any);
           }
 
-          const auditLogs = await auditQuery.orderBy("created_at", "desc").limit(limit).execute();
+          // Audit rows carry no request id, so a lookup by reference has none to show.
+          const auditLogs = requestId
+            ? []
+            : await auditQuery.orderBy("created_at", "desc").limit(limit).execute();
 
           // Map audit_log rows to the Log shape expected by LogsViewer
           const auditAsLogs = auditLogs.map((a) => ({
@@ -214,19 +216,9 @@ export const Route = createFileRoute("/api/logs/")({
             },
           });
         } catch (error) {
-          console.error("[LOGS GET ERROR]", error);
-          return json(
-            {
-              success: false,
-              error: {
-                code: "ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Unknown error");
         }
-      },
+      }),
     },
   },
 });

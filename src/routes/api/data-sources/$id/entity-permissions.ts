@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { z } from "zod";
 import { getDb } from "@/lib/db/config";
 import {
@@ -20,19 +22,19 @@ const permissionSchema = z.object({
 export const Route = createFileRoute("/api/data-sources/$id/entity-permissions")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/data-sources/$id/entity-permissions", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
           const roleId = new URL(request.url).searchParams.get("ds_role_id") || undefined;
           return json({ success: true, data: await getDsEntityPermissions(params.id, roleId) });
         } catch (error) {
-          console.error("[ds-rbac] list permissions failed:", error);
+          recordFailure(error, "[ds-rbac] list permissions failed:");
           return apiFailure("SERVER_ERROR", "Failed to load permissions", 500);
         }
-      },
+      }),
 
-      POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      POST: withApiHandler("/api/data-sources/$id/entity-permissions", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
@@ -72,12 +74,12 @@ export const Route = createFileRoute("/api/data-sources/$id/entity-permissions")
           });
           return json({ success: true, data: permission }, { status: 201 });
         } catch (error) {
-          console.error("[ds-rbac] set permission failed:", error);
+          recordFailure(error, "[ds-rbac] set permission failed:");
           return apiFailure("SERVER_ERROR", "Failed to save the permission", 500);
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      DELETE: withApiHandler("/api/data-sources/$id/entity-permissions", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
@@ -100,10 +102,10 @@ export const Route = createFileRoute("/api/data-sources/$id/entity-permissions")
           });
           return json({ success: true });
         } catch (error) {
-          console.error("[ds-rbac] delete permission failed:", error);
+          recordFailure(error, "[ds-rbac] delete permission failed:");
           return apiFailure("SERVER_ERROR", "Failed to remove the permission", 500);
         }
-      },
+      }),
     },
   },
 });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EnhancedSchemaMetadata } from "@/lib/nlquery/llama-translator";
+import { getLogger } from "@/lib/logging/logger";
 
 interface UseLlamaVoiceOptions {
   onTranscript?: (text: string, isFinal: boolean) => void;
@@ -71,7 +72,7 @@ export function useLlamaVoice(options: UseLlamaVoiceOptions = {}) {
             options.onError?.(error);
           }
         } catch (err) {
-          console.error("[useLlamaVoice] Message parse error:", err);
+          getLogger("voice").note("error", "[useLlamaVoice] Message parse error:", { err: err });
         }
       };
 

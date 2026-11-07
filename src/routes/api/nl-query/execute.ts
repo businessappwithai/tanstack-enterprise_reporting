@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { getDb } from "@/lib/db/config";
 import { getConnection } from "@/lib/db/connection-manager";
@@ -18,7 +21,7 @@ function failure(code: string, message: string, status: number) {
 export const Route = createFileRoute("/api/nl-query/execute")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/nl-query/execute", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -89,7 +92,7 @@ export const Route = createFileRoute("/api/nl-query/execute")({
                   result.queryResults!.executionTimeMs
                 )
               )
-              .catch((e) => console.warn("[RAG] Failed to store query embedding:", e));
+              .catch((e) => getLogger("nlquery").event("nlquery.embedding.store_failed", { target: "query", err: e }));
           }
 
           return json({
@@ -97,18 +100,9 @@ export const Route = createFileRoute("/api/nl-query/execute")({
             data: result,
           });
         } catch (error) {
-          console.error("NL Query execute error:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                message: error instanceof Error ? error.message : "Failed to execute query",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to execute query");
         }
-      },
+      }),
     },
   },
 });

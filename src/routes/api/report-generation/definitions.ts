@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql } from "kysely";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
@@ -33,7 +34,7 @@ function deserializeDefinition(row: Record<string, unknown>) {
 export const Route = createFileRoute("/api/report-generation/definitions")({
   server: {
     handlers: {
-      GET: async ({ request }: { request: Request }) => {
+      GET: withApiHandler("/api/report-generation/definitions", async ({ request }: { request: Request }) => {
         const session = await getSession(request);
         if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
 
@@ -132,9 +133,9 @@ export const Route = createFileRoute("/api/report-generation/definitions")({
         }
 
         return json({ definitions, total, page, pageSize });
-      },
+      }),
 
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/report-generation/definitions", async ({ request }: { request: Request }) => {
         const session = await getSession(request);
         if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
 
@@ -400,7 +401,7 @@ export const Route = createFileRoute("/api/report-generation/definitions")({
         }
 
         return json({ definition: { id } }, { status: 201 });
-      },
+      }),
     },
   },
 });

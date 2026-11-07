@@ -7,6 +7,7 @@ import {
   extractScatterData,
   extractSeries,
 } from "../DataAdapter";
+import { getLogger } from "@/lib/logging/logger";
 
 export function buildBar(config: EChartsConfig, rows: Record<string, unknown>[]): EChartsOption {
   const categories = extractCategories(rows, config.dataMapping);
@@ -34,11 +35,9 @@ export function buildBar(config: EChartsConfig, rows: Record<string, unknown>[])
     return baseSeries;
   });
 
-  console.log("[buildBar] Input config.stacked:", config.stacked);
-  console.log("[buildBar] Series colors:", config.seriesColors);
-  console.log(
-    "[buildBar] Series:",
-    seriesWithStack.map((s) => ({
+  getLogger("client").note("debug", "[buildBar] Input config.stacked:", { detail: [config.stacked] });
+  getLogger("client").note("debug", "[buildBar] Series colors:", { detail: [config.seriesColors] });
+  getLogger("client").note("debug", "[buildBar] Series:", { detail: [seriesWithStack.map((s) => ({
       name: s.name,
       hasStack: "stack" in s,
       stackValue: s.stack,
@@ -46,10 +45,9 @@ export function buildBar(config: EChartsConfig, rows: Record<string, unknown>[])
       allKeys: Object.keys(s),
       type: s.type,
       hasColor: "itemStyle" in s,
-    }))
-  );
-  console.log("[buildBar] First series object:", JSON.stringify(seriesWithStack[0], null, 2));
-  console.log("[buildBar] Second series object:", JSON.stringify(seriesWithStack[1], null, 2));
+    }))] });
+  getLogger("client").note("debug", "[buildBar] First series object:", { detail: [JSON.stringify(seriesWithStack[0], null, 2)] });
+  getLogger("client").note("debug", "[buildBar] Second series object:", { detail: [JSON.stringify(seriesWithStack[1], null, 2)] });
 
   const result: EChartsOption = {
     xAxis: {
@@ -90,7 +88,7 @@ export function buildBar(config: EChartsConfig, rows: Record<string, unknown>[])
     },
   };
 
-  console.log("[buildBar] Result:", result);
+  getLogger("client").note("debug", "[buildBar] Result:", { detail: [result] });
 
   return result;
 }

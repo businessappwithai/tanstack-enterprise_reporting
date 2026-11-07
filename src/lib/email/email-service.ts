@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface EmailTemplate {
   id: string;
@@ -263,7 +264,7 @@ export async function sendEmail(
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error("Error sending email:", error);
+    getLogger("email").note("error", "Error sending email:", { err: error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

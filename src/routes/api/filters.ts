@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
@@ -11,7 +13,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/filters")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/filters", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -42,13 +44,9 @@ export const Route = createFileRoute("/api/filters")({
 
           return json({ success: true, data: filters });
         } catch (error) {
-          console.error("Error fetching filters:", error);
-          return json(
-            { success: false, error: { message: "Failed to fetch filters" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch filters");
         }
-      },
+      }),
     },
   },
 });

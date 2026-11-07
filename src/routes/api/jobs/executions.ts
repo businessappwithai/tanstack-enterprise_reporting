@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
 import { json } from "@/lib/server/response";
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/jobs/executions")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/jobs/executions", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -36,16 +38,9 @@ export const Route = createFileRoute("/api/jobs/executions")({
 
           return json({ success: true, data: { items: executions } });
         } catch (error) {
-          console.error("Error fetching job executions:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to fetch job executions" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch job executions");
         }
-      },
+      }),
     },
   },
 });

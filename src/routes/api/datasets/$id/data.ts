@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql as kyselySql } from "kysely";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/api/datasets/$id/data")({
       // the browser hands to DuckDB-WASM. The query runs here, for the caller, every time:
       // nothing is stored on the server, so there is no file for someone the query would
       // refuse to read.
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/datasets/$id/data", async ({ request, params }) => {
         try {
           const session = await auth(request);
           if (!session?.user) return fail(401, "UNAUTHORIZED", "Not authenticated");
@@ -110,14 +112,14 @@ export const Route = createFileRoute("/api/datasets/$id/data")({
             },
           });
         } catch (error) {
-          console.error("Error building dataset:", error);
+          recordFailure(error, "Error building dataset:");
           return fail(
             500,
             "EXECUTION_ERROR",
             error instanceof Error ? error.message : "Failed to build dataset"
           );
         }
-      },
+      }),
     },
   },
 });

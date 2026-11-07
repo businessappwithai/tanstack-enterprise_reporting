@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import {
   refuseWithoutPermission,
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/charts/")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/charts/", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -57,15 +59,11 @@ export const Route = createFileRoute("/api/charts/")({
             },
           });
         } catch (error) {
-          console.error("Error fetching charts:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to fetch charts" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch charts");
         }
-      },
+      }),
 
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/charts/", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -128,13 +126,9 @@ export const Route = createFileRoute("/api/charts/")({
             { status: 201 }
           );
         } catch (error) {
-          console.error("Error creating chart:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to create chart" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to create chart");
         }
-      },
+      }),
     },
   },
 });

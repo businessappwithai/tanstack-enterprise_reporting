@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Database, Table } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listDataSources } from "@/server-fns/data-sources";
 import { introspectSchema } from "@/server-fns/sql";
+import { getLogger } from "@/lib/logging/logger";
 
 interface DataSource {
   id: string;
@@ -43,7 +44,7 @@ export function SchemaInstructionsBrowser({
           setDataSources(result.items as unknown as DataSource[]);
         }
       } catch (error) {
-        console.error("Failed to fetch data sources:", error);
+        getLogger("client").note("error", "Failed to fetch data sources:", { err: error });
       }
     };
 
@@ -68,7 +69,7 @@ export function SchemaInstructionsBrowser({
           }));
         }
       } catch (error) {
-        console.error("Failed to fetch schema:", error);
+        getLogger("client").note("error", "Failed to fetch schema:", { err: error });
       }
     };
 

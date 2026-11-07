@@ -48,6 +48,7 @@ import { copilotRuntimeUrl, onCopilotError } from "@/lib/copilot/runtime-url";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import "@copilotkit/react-ui/styles.css";
+import { getLogger } from "@/lib/logging/logger";
 export const Route = createFileRoute("/_authed/data-sources/")({
   component: DataSourcesPage,
 });
@@ -371,7 +372,7 @@ function DataSourcesContent() {
     onError: (error) => {
       const message = error instanceof Error ? error.message : "Failed to inspect schema";
       toast.error(message);
-      console.error("Inspect error:", message);
+      getLogger("client").note("error", "Inspect error:", { detail: [message] });
       setInspectingDs(null);
     },
   });

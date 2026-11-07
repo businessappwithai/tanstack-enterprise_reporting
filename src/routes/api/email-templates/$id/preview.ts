@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql } from "kysely";
 import { getDb } from "@/lib/db/config";
 import { getConnection } from "@/lib/db/connection-manager";
@@ -25,7 +27,7 @@ const PREVIEW_ROWS = 5;
 export const Route = createFileRoute("/api/email-templates/$id/preview")({
   server: {
     handlers: {
-      POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      POST: withApiHandler("/api/email-templates/$id/preview", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeTemplates(request, "edit");
           if (who instanceof Response) return who;
@@ -124,10 +126,10 @@ export const Route = createFileRoute("/api/email-templates/$id/preview")({
             },
           });
         } catch (error) {
-          console.error("[email-templates] preview failed:", error);
+          recordFailure(error, "[email-templates] preview failed:");
           return templateFailure("SERVER_ERROR", "Failed to preview the template", 500);
         }
-      },
+      }),
     },
   },
 });

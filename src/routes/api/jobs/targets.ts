@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql } from "kysely";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
@@ -22,7 +24,7 @@ export const Route = createFileRoute("/api/jobs/targets")({
     handlers: {
       // What a job can point at, by name: the lookup the assistant needs to turn "the weekly
       // sales report" into a target_id. Searched at the database, at most ten at a time.
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/jobs/targets", async ({ request }) => {
         try {
           const session = await auth(request);
           if (!session?.user) return fail(401, "UNAUTHORIZED", "Not authenticated");
@@ -70,10 +72,10 @@ export const Route = createFileRoute("/api/jobs/targets")({
 
           return json({ success: true, data: { items } });
         } catch (error) {
-          console.error("Error listing job targets:", error);
+          recordFailure(error, "Error listing job targets:");
           return fail(500, "SERVER_ERROR", "Failed to list job targets");
         }
-      },
+      }),
     },
   },
 });

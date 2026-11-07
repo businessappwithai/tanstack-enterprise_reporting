@@ -13,6 +13,7 @@ import { sql } from "kysely";
 import type { Kysely } from "kysely";
 import { getConnection } from "@/lib/db/connection-manager";
 import type { DataSource } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 const EMBEDDING_DIM = 384;
 const EMBEDDING_BASE_URL =
@@ -150,7 +151,7 @@ export async function findSimilarQueries(
         similarity: r.similarity,
       }));
   } catch (e) {
-    console.warn("[RAG] findSimilarQueries failed:", e);
+    getLogger("nlquery").note("warn", "[RAG] findSimilarQueries failed:", { err: e });
     return [];
   }
 }
@@ -199,7 +200,7 @@ export async function findRelevantSchema(
         similarity: r.similarity,
       }));
   } catch (e) {
-    console.warn("[RAG] findRelevantSchema failed:", e);
+    getLogger("nlquery").note("warn", "[RAG] findRelevantSchema failed:", { err: e });
     return [];
   }
 }
@@ -250,7 +251,7 @@ export async function storeQueryEmbedding(
       `.execute(connection);
     }
   } catch (e) {
-    console.warn("[RAG] storeQueryEmbedding failed:", e);
+    getLogger("nlquery").note("warn", "[RAG] storeQueryEmbedding failed:", { err: e });
   }
 }
 
@@ -292,7 +293,7 @@ export async function storeSchemaEmbeddings(
           updated_at = NOW()
       `.execute(connection);
     } catch (e) {
-      console.warn(`[RAG] storeSchemaEmbeddings failed for ${table.name}:`, e);
+      getLogger("nlquery").note("warn", `[RAG] storeSchemaEmbeddings failed for ${table.name}:`, { err: e });
     }
   }
 }
@@ -335,7 +336,7 @@ export async function buildRagContext(dataSource: DataSource, queryText: string)
 
     return parts.join("\n");
   } catch (e) {
-    console.warn("[RAG] buildRagContext failed:", e);
+    getLogger("nlquery").note("warn", "[RAG] buildRagContext failed:", { err: e });
     return "";
   }
 }

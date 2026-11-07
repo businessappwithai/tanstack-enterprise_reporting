@@ -12,6 +12,7 @@
  */
 
 import { Pool, type PoolClient } from "pg";
+import { getLogger } from "@/lib/logging/logger";
 
 const GRAPH_DATABASE_URL =
   process.env.GRAPH_DATABASE_URL ?? "postgresql://graph:graphpass@localhost:5433/ers_knowledge";
@@ -31,7 +32,7 @@ function getPool(): Pool {
   // As the config pool (kysely-db.ts): without a listener, a dropped idle connection
   // is an unhandled `error` event and exits the process.
   _pool.on("error", (err: Error) => {
-    console.warn(`[graph] Idle knowledge-graph connection lost: ${err.message}`);
+    getLogger("db").event("db.pool.error", { pool: "knowledge graph", err });
   });
   _pool.on("connect", (client) => {
     setupClient(client).catch(() => {});

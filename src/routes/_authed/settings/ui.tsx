@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
+import { getLogger } from "@/lib/logging/logger";
 
 interface UISettings {
   tableRowStripeColor: string;
@@ -30,7 +31,7 @@ function UISettingsPage() {
       try {
         setSettings(JSON.parse(saved));
       } catch (e) {
-        console.error("Failed to parse UI settings:", e);
+        getLogger("client").note("error", "Failed to parse UI settings:", { err: e });
       }
     }
   }, []);
@@ -42,7 +43,7 @@ function UISettingsPage() {
       toast.success("UI Settings saved successfully");
     } catch (e) {
       toast.error("Failed to save UI settings");
-      console.error(e);
+      getLogger("client").note("error", "error", { err: e });
     } finally {
       setIsSaving(false);
     }

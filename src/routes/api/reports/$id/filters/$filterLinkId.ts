@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { canConfigureReport } from "@/lib/permissions/report-ownership";
 
@@ -10,7 +12,7 @@ async function getSession(_request: Request) {
 export const Route = createFileRoute("/api/reports/$id/filters/$filterLinkId")({
   server: {
     handlers: {
-      PUT: async ({ request, params }) => {
+      PUT: withApiHandler("/api/reports/$id/filters/$filterLinkId", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session) {
@@ -58,12 +60,12 @@ export const Route = createFileRoute("/api/reports/$id/filters/$filterLinkId")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error updating report filter:", error);
+          recordFailure(error, "Error updating report filter:");
           return json({ error: "Failed to update report filter" }, { status: 500 });
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }) => {
+      DELETE: withApiHandler("/api/reports/$id/filters/$filterLinkId", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session) {
@@ -103,10 +105,10 @@ export const Route = createFileRoute("/api/reports/$id/filters/$filterLinkId")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting report filter:", error);
+          recordFailure(error, "Error deleting report filter:");
           return json({ error: "Failed to delete report filter" }, { status: 500 });
         }
-      },
+      }),
     },
   },
 });

@@ -17,6 +17,7 @@ import { logAudit } from "@/lib/security/audit";
 import { isReadOnlyQuery } from "@/lib/sql/validator";
 import type { DataSource, NlQueryPipelineResult } from "@/types/database";
 import { validateSqlAccess, validateSqlTokens } from "./sql-parser";
+import { getLogger } from "@/lib/logging/logger";
 
 const MAX_RESULT_ROWS = 1000;
 
@@ -131,7 +132,7 @@ export async function executeNlQueryPipeline(
         details: { blocked: "not_read_only", source: "nl-query", sql: generatedSql.slice(0, 500) },
       });
     } catch (auditError) {
-      console.error("[nl-query] Failed to audit-log a refused statement:", auditError);
+      getLogger("nlquery").note("error", "[nl-query] Failed to audit-log a refused statement:", { err: auditError });
     }
     return {
       naturalLanguageQuery,
@@ -222,7 +223,7 @@ export async function executeNlQueryPipeline(
         },
       });
     } catch (auditError) {
-      console.error("[nl-query] Failed to audit-log an execution:", auditError);
+      getLogger("nlquery").note("error", "[nl-query] Failed to audit-log an execution:", { err: auditError });
     }
 
     const columns = resultRows.length > 0 ? Object.keys(resultRows[0]) : [];

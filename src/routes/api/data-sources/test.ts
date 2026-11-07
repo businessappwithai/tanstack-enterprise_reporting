@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { setRequestContext } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { ConnectionTestService } from "@/lib/services/connection-test.service";
@@ -28,20 +31,17 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/data-sources/test")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
-        const testRequestId = Math.random().toString(36).substring(7);
+      POST: withApiHandler("/api/data-sources/test", async ({ request }: { request: Request }) => {
+        const log = getLogger("datasource");
         const startTime = Date.now();
 
         try {
-          console.log(`[API_TEST:${testRequestId}] Connection test request received`);
-
           const session = await getSession(request);
           if (!session?.user) {
-            console.warn(`[API_TEST:${testRequestId}] Unauthorized - no valid session`);
             return json({ error: { message: "Unauthorized" } }, { status: 401 });
           }
 
-          console.log(`[API_TEST:${testRequestId}] User: ${session.user.email || session.user.id}`);
+          setRequestContext({ userId: session.user.id });
 
           const body = (await request.json().catch(() => null)) as TestConnectionRequest | null;
           // Checked before anything reads body.connectionConfig: this used to throw a TypeError
@@ -52,24 +52,6 @@ export const Route = createFileRoute("/api/data-sources/test")({
               { status: 400 }
             );
           }
-          console.log(`[API_TEST:${testRequestId}] Request body received`);
-          console.log(`[API_TEST:${testRequestId}] Client type: ${body.clientType}`);
-
-          // Log config without sensitive data
-          const configSummary = {
-            clientType: body.clientType,
-            host: body.connectionConfig.host || "N/A",
-            port: body.connectionConfig.port || "default",
-            database: body.connectionConfig.database || "N/A",
-            user: body.connectionConfig.user || "N/A",
-            hasPassword: !!body.connectionConfig.password,
-            hasConnectionString: !!body.connectionConfig.connectionString,
-            hasFilename: !!body.connectionConfig.filename,
-          };
-          console.log(
-            `[API_TEST:${testRequestId}] Config Summary: ${JSON.stringify(configSummary)}`
-          );
-
           /*
            * Two checks this route did not make, both of which it needs because
            * the host and port come straight from the request body.
@@ -93,7 +75,7 @@ export const Route = createFileRoute("/api/data-sources/test")({
               session.user.roles ?? []
             )
           ) {
-            console.warn(`[API_TEST:${testRequestId}] Denied — missing data_source:create`);
+            log.event("datasource.test.refused", { reason: "missing data_source:create" });
             return json(
               { error: { message: "You do not have permission to manage data sources" } },
               { status: 403 }
@@ -102,22 +84,18 @@ export const Route = createFileRoute("/api/data-sources/test")({
 
           const target = await checkDataSourceHost(body.connectionConfig?.host);
           if (!target.allowed) {
-            console.warn(`[API_TEST:${testRequestId}] Denied — ${target.reason}`);
+            log.event("datasource.test.refused", { reason: target.reason ?? "target not allowed" });
             return json({ error: { message: target.reason } }, { status: 403 });
           }
 
-          console.log(`[API_TEST:${testRequestId}] Starting connection test service...`);
           const result = await ConnectionTestService.test(body.clientType, body.connectionConfig);
 
           const duration = Date.now() - startTime;
-          console.log(`[API_TEST:${testRequestId}] Test completed in ${duration}ms`);
-          console.log(
-            `[API_TEST:${testRequestId}] Result: ${JSON.stringify({
-              success: result.connected,
-              message: result.message,
-              latency: result.latency,
-            })}`
-          );
+          log.event("datasource.test.completed", {
+            clientType: body.clientType,
+            connected: result.connected,
+            durationMs: duration,
+          });
 
           return json({
             data: result,
@@ -126,14 +104,8 @@ export const Route = createFileRoute("/api/data-sources/test")({
           const duration = Date.now() - startTime;
           const errorMessage = error instanceof Error ? error.message : "Test connection failed";
           const errorCode = error instanceof Error ? (error as any).code : "UNKNOWN";
-          const errorStack = error instanceof Error ? error.stack : "";
 
-          console.error(`[API_TEST:${testRequestId}] Test FAILED after ${duration}ms`);
-          console.error(`[API_TEST:${testRequestId}] Error Code: ${errorCode}`);
-          console.error(`[API_TEST:${testRequestId}] Error Message: ${errorMessage}`);
-          if (errorStack) {
-            console.error(`[API_TEST:${testRequestId}] Stack:\n${errorStack}`);
-          }
+          log.event("datasource.test.failed", { errorCode: String(errorCode ?? "UNKNOWN"), durationMs: duration });
 
           return json(
             {
@@ -144,7 +116,7 @@ export const Route = createFileRoute("/api/data-sources/test")({
             { status: 500 }
           );
         }
-      },
+      }),
     },
   },
 });

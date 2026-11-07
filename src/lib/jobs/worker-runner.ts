@@ -22,6 +22,7 @@ import {
   startOnPremiseCronRunner,
   stopOnPremiseCronRunner,
 } from "@/lib/monitoring/monitoring-scheduler";
+import { getLogger } from "@/lib/logging/logger";
 
 const WORKER_CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || "5", 10);
 
@@ -30,32 +31,32 @@ function isTriggerDevConfigured(): boolean {
 }
 
 export async function initializeWorkers(): Promise<void> {
-  console.log("✓ Trigger.dev task definitions loaded");
-  console.log(`  - reportGenerationTask (concurrency: ${WORKER_CONCURRENCY})`);
-  console.log(`  - dataExportTask (concurrency: ${WORKER_CONCURRENCY})`);
-  console.log(`  - emailBatchTask (concurrency: ${WORKER_CONCURRENCY})`);
-  console.log(`  - scheduledRefreshTask (concurrency: ${WORKER_CONCURRENCY})`);
+  getLogger("jobs").note("debug", "✓ Trigger.dev task definitions loaded");
+  getLogger("jobs").note("debug", `  - reportGenerationTask (concurrency: ${WORKER_CONCURRENCY})`);
+  getLogger("jobs").note("debug", `  - dataExportTask (concurrency: ${WORKER_CONCURRENCY})`);
+  getLogger("jobs").note("debug", `  - emailBatchTask (concurrency: ${WORKER_CONCURRENCY})`);
+  getLogger("jobs").note("debug", `  - scheduledRefreshTask (concurrency: ${WORKER_CONCURRENCY})`);
 
   // Job definitions are scheduled by neither backend below, so this runs in both modes.
   startJobDefinitionRunner();
 
   if (isTriggerDevConfigured()) {
-    console.log("");
-    console.log("Jobs are now being processed by Trigger.dev (self-hosted):");
-    console.log(`  - TRIGGER_API_URL: ${process.env.TRIGGER_API_URL}`);
-    console.log("  - Configure retries and timeouts in trigger.config.ts");
+    getLogger("jobs").note("debug", "");
+    getLogger("jobs").note("debug", "Jobs are now being processed by Trigger.dev (self-hosted):");
+    getLogger("jobs").note("debug", `  - TRIGGER_API_URL: ${process.env.TRIGGER_API_URL}`);
+    getLogger("jobs").note("debug", "  - Configure retries and timeouts in trigger.config.ts");
   } else {
-    console.log("");
-    console.log("TRIGGER_API_URL not set — starting on-premise cron runner as fallback.");
+    getLogger("jobs").note("debug", "");
+    getLogger("jobs").note("debug", "TRIGGER_API_URL not set — starting on-premise cron runner as fallback.");
     startOnPremiseCronRunner();
   }
 }
 
 export async function shutdownWorkers(): Promise<void> {
-  console.log("Shutting down workers...");
+  getLogger("jobs").note("debug", "Shutting down workers...");
   stopOnPremiseCronRunner();
   stopJobDefinitionRunner();
-  console.log("✓ Workers stopped");
+  getLogger("jobs").note("debug", "✓ Workers stopped");
 }
 
 export async function checkWorkerHealth(): Promise<{ healthy: boolean; message: string }> {

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import type { ExpressionBuilder } from "kysely";
 import type { Database } from "@/lib/db/kysely-db";
 import { json } from "@/lib/server/response";
@@ -20,7 +21,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/queries")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/queries", async ({ request }) => {
         const logger = createLogger({ component: LOG_COMPONENTS.SAVED_QUERIES_API });
         try {
           const session = await getSession(request);
@@ -121,8 +122,8 @@ export const Route = createFileRoute("/api/queries")({
             { status: 500 }
           );
         }
-      },
-      POST: async ({ request }) => {
+      }),
+      POST: withApiHandler("/api/queries", async ({ request }) => {
         const logger = createLogger({ component: LOG_COMPONENTS.SAVED_QUERIES_API });
         const startTime = Date.now();
         try {
@@ -293,7 +294,7 @@ export const Route = createFileRoute("/api/queries")({
             { status: 500 }
           );
         }
-      },
+      }),
     },
   },
 });

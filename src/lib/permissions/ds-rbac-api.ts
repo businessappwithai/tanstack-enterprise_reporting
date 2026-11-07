@@ -16,6 +16,7 @@ import { getDb } from "@/lib/db/config";
 import { refuseWithoutDataSourcePermission } from "@/lib/permissions/data-source-guard";
 import { logAudit } from "@/lib/security/audit";
 import { json } from "@/lib/server/response";
+import { getLogger } from "@/lib/logging/logger";
 
 export function apiFailure(code: string, message: string, status: number, details?: unknown) {
   return json({ success: false, error: { code, message, details } }, { status });
@@ -58,6 +59,6 @@ export async function auditDsRbac(
       details: { area: "ds-rbac", ...details },
     });
   } catch (err) {
-    console.error("[ds-rbac] Failed to audit-log a permission change:", err);
+    getLogger("auth").note("error", "[ds-rbac] Failed to audit-log a permission change:", { err: err });
   }
 }

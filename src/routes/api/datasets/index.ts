@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { z } from "zod";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
@@ -26,7 +28,7 @@ export const Route = createFileRoute("/api/datasets/")({
     handlers: {
       // The list is names and last-download stats; the rows are only ever produced by
       // /api/datasets/:id/data, for whoever is downloading.
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/datasets/", async ({ request }) => {
         try {
           const session = await auth(request);
           if (!session?.user) return fail(401, "UNAUTHORIZED", "Not authenticated");
@@ -88,12 +90,12 @@ export const Route = createFileRoute("/api/datasets/")({
             data: { datasets, meta: { total: Number(total?.total ?? 0), page, pageSize } },
           });
         } catch (error) {
-          console.error("Error listing datasets:", error);
+          recordFailure(error, "Error listing datasets:");
           return fail(500, "SERVER_ERROR", "Failed to list datasets");
         }
-      },
+      }),
 
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/datasets/", async ({ request }) => {
         try {
           const session = await auth(request);
           if (!session?.user) return fail(401, "UNAUTHORIZED", "Not authenticated");
@@ -169,10 +171,10 @@ export const Route = createFileRoute("/api/datasets/")({
 
           return json({ success: true, data: { id } }, { status: 201 });
         } catch (error) {
-          console.error("Error creating dataset:", error);
+          recordFailure(error, "Error creating dataset:");
           return fail(500, "SERVER_ERROR", "Failed to create dataset");
         }
-      },
+      }),
     },
   },
 });

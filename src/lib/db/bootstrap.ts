@@ -13,6 +13,7 @@ import type { Kysely } from "kysely";
 import type { Database } from "./kysely-db";
 import { seedHelpArticles } from "./help-seed";
 import { BCRYPT_COST } from "@/lib/auth/bcrypt-cost";
+import { getLogger } from "@/lib/logging/logger";
 
 /*
  * The bootstrap accounts, and where their passwords come from.
@@ -39,19 +40,15 @@ function resolveBootstrapPassword(envVar: string, label: string): string {
   if (configured && configured.length >= 8) return configured;
 
   if (configured) {
-    console.warn(
-      `[bootstrap] ${envVar} is shorter than 8 characters and was ignored. ` +
-        "Generating a random password instead."
-    );
+    getLogger("db").note("warn", `[bootstrap] ${envVar} is shorter than 8 characters and was ignored. ` +
+        "Generating a random password instead.");
   }
 
   const generated = randomBytes(18).toString("base64url");
-  console.warn(
-    `\n[bootstrap] No ${envVar} set. Generated a random password for ${label}:\n\n` +
+  getLogger("db").note("warn", `\n[bootstrap] No ${envVar} set. Generated a random password for ${label}:\n\n` +
       `    ${generated}\n\n` +
       "This is printed once and is not recoverable. Sign in and change it, or set " +
-      `${envVar} before first boot.\n`
-  );
+      `${envVar} before first boot.\n`);
   return generated;
 }
 
@@ -69,7 +66,7 @@ async function bcryptHash(password: string): Promise<string> {
 }
 
 export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
-  console.log("[bootstrap] Starting database schema bootstrap...");
+  getLogger("db").note("debug", "[bootstrap] Starting database schema bootstrap...");
 
   const tables = [
     sql`CREATE TABLE IF NOT EXISTS users (
@@ -705,6 +702,10 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
   const alters = [
     // Better Auth requires emailVerified on the user model.
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+    // What kind of failure a log line is, and which catalogue code: the System Logs filters.
+    sql`ALTER TABLE logs ADD COLUMN IF NOT EXISTS category VARCHAR(50)`,
+    sql`ALTER TABLE logs ADD COLUMN IF NOT EXISTS code VARCHAR(100)`,
+    sql`CREATE INDEX IF NOT EXISTS idx_logs_request_id ON logs (request_id)`,
     // The credential now lives in auth_accounts.password. The column stays for
     // the migration below to read, but a Better-Auth-created user never fills
     // it, so it can no longer be NOT NULL.
@@ -738,12 +739,12 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     sql`CREATE INDEX IF NOT EXISTS idx_auth_verifications_identifier ON auth_verifications (identifier)`,
   ];
 
-  console.log("[bootstrap] Creating tables...");
+  getLogger("db").note("debug", "[bootstrap] Creating tables...");
   for (const table of tables) {
     try {
       await table.execute(db);
     } catch (err) {
-      console.warn("[bootstrap] table create warning:", (err as Error).message?.slice(0, 120));
+      getLogger("db").note("warn", "[bootstrap] table create warning:", { detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
@@ -751,16 +752,16 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     try {
       await alter.execute(db);
     } catch (err) {
-      console.warn("[bootstrap] alter warning:", (err as Error).message?.slice(0, 120));
+      getLogger("db").note("warn", "[bootstrap] alter warning:", { detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
-  console.log("[bootstrap] Creating indexes...");
+  getLogger("db").note("debug", "[bootstrap] Creating indexes...");
   for (const idx of indexes) {
     try {
       await idx.execute(db);
     } catch (err) {
-      console.warn("[bootstrap] index create warning:", (err as Error).message?.slice(0, 120));
+      getLogger("db").note("warn", "[bootstrap] index create warning:", { detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
@@ -783,10 +784,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       ON ds_entity_permissions (data_source_id, ds_role_id, entity_name, entity_schema)
       NULLS NOT DISTINCT`.execute(db);
   } catch (err) {
-    console.warn(
-      "[bootstrap] ds_entity_permissions unique index warning:",
-      (err as Error).message?.slice(0, 160)
-    );
+    getLogger("db").note("warn", "[bootstrap] ds_entity_permissions unique index warning:", { detail: [(err as Error).message?.slice(0, 160)] });
   }
 
   /*
@@ -808,12 +806,12 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     try {
       await stmt.execute(db);
     } catch (err) {
-      console.warn("[bootstrap] email_templates column warning:", (err as Error).message?.slice(0, 120));
+      getLogger("db").note("warn", "[bootstrap] email_templates column warning:", { detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
   // Seed admin user and role
-  console.log("[bootstrap] Seeding admin user...");
+  getLogger("db").note("debug", "[bootstrap] Seeding admin user...");
   const adminRoleId = "admin-role-id";
   const ADMIN_PERMISSIONS = JSON.stringify([
     "*:*",
@@ -851,7 +849,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     .onConflict((oc) => oc.column("id").doUpdateSet({ permissions: ADMIN_PERMISSIONS }))
     .execute()
     .catch((err) => {
-      console.warn("[bootstrap] admin role upsert warning:", (err as Error).message?.slice(0, 120));
+      getLogger("db").note("warn", "[bootstrap] admin role upsert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
     });
 
   const userCount = await db
@@ -876,10 +874,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       })
       .execute()
       .catch((err) => {
-        console.warn(
-          "[bootstrap] admin user insert warning:",
-          (err as Error).message?.slice(0, 120)
-        );
+        getLogger("db").note("warn", "[bootstrap] admin user insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
       });
 
     await db
@@ -887,13 +882,10 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       .values({ user_id: ADMIN_ID, role_id: adminRoleId, assigned_at: now })
       .execute()
       .catch((err) => {
-        console.warn(
-          "[bootstrap] admin user_roles insert warning:",
-          (err as Error).message?.slice(0, 120)
-        );
+        getLogger("db").note("warn", "[bootstrap] admin user_roles insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
       });
 
-    console.log("[bootstrap] Admin created: admin@admin.com");
+    getLogger("db").note("debug", "[bootstrap] Admin created: admin@admin.com");
   }
 
   const nlQueryPermissions = JSON.stringify(["nl_query:*"]);
@@ -911,10 +903,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     .onConflict((oc) => oc.column("id").doUpdateSet({ permissions: nlQueryPermissions }))
     .execute()
     .catch((err) => {
-      console.warn(
-        "[bootstrap] nlquery role insert warning:",
-        (err as Error).message?.slice(0, 120)
-      );
+      getLogger("db").note("warn", "[bootstrap] nlquery role insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
     });
 
   /*
@@ -951,10 +940,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       .onConflict((oc) => oc.column("id").doNothing())
       .execute()
       .catch((err) => {
-        console.warn(
-          "[bootstrap] nlquery user insert warning:",
-          (err as Error).message?.slice(0, 120)
-        );
+        getLogger("db").note("warn", "[bootstrap] nlquery user insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
       });
   }
 
@@ -964,13 +950,10 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     .onConflict((oc) => oc.columns(["user_id", "role_id"]).doNothing())
     .execute()
     .catch((err) => {
-      console.warn(
-        "[bootstrap] nlquery user_roles insert warning:",
-        (err as Error).message?.slice(0, 120)
-      );
+      getLogger("db").note("warn", "[bootstrap] nlquery user_roles insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
     });
 
-  console.log("[bootstrap] NL Query user ensured: nlquery@nlquery.com");
+  getLogger("db").note("debug", "[bootstrap] NL Query user ensured: nlquery@nlquery.com");
 
   // ── Credentials into Better Auth ──────────────────────────────────────────
   //
@@ -1019,21 +1002,16 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       .onConflict((oc) => oc.column("id").doNothing())
       .execute()
       .catch((err) => {
-        console.warn(
-          "[bootstrap] credential migration warning:",
-          (err as Error).message?.slice(0, 120)
-        );
+        getLogger("db").note("warn", "[bootstrap] credential migration warning:", { detail: [(err as Error).message?.slice(0, 120)] });
       });
   }
 
   if (usersNeedingCredential.length > 0) {
-    console.log(
-      `[bootstrap] Migrated ${usersNeedingCredential.length} credential(s) into Better Auth`
-    );
+    getLogger("db").note("debug", `[bootstrap] Migrated ${usersNeedingCredential.length} credential(s) into Better Auth`);
   }
 
-  console.log("[bootstrap] Seeding help articles...");
+  getLogger("db").note("debug", "[bootstrap] Seeding help articles...");
   await seedHelpArticles(db);
 
-  console.log("[bootstrap] Database bootstrap complete!");
+  getLogger("db").note("debug", "[bootstrap] Database bootstrap complete!");
 }

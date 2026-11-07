@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { getLogger } from "@/lib/logging/logger";
 
 interface LogContext {
   component: string;
@@ -23,7 +24,7 @@ export function useLogger(context: LogContext) {
           }),
         });
       } catch (error) {
-        console.error("[Logger Error]", error);
+        getLogger("client").note("error", "[Logger Error]", { err: error });
       }
     },
     [context.component]

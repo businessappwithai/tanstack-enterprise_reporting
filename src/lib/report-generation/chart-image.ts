@@ -1,3 +1,4 @@
+import { getLogger } from "@/lib/logging/logger";
 /**
  * Chart image rendering for generated artifacts: ECharts SSR → SVG → sharp → PNG.
  *
@@ -73,10 +74,7 @@ export async function renderChartPng(
 
     return pngBuffer;
   } catch (err) {
-    console.warn(
-      "[report-worker] Chart rendering failed, reports will be generated without charts:",
-      err
-    );
+    getLogger("report").note("warn", "[report-worker] Chart rendering failed, reports will be generated without charts:", { err: err });
     return null;
   }
 }

@@ -10,6 +10,7 @@ import {
   scheduledRefreshTask,
 } from "./trigger-tasks";
 import type { JobData, JobOptions, JobResult, QueueStatus, ScheduledJobOptions } from "./types";
+import { getLogger } from "@/lib/logging/logger";
 
 /**
  * Add a job to the trigger.dev queue
@@ -45,7 +46,7 @@ export async function addJobViaTriggger(
         throw new Error(`Unknown job type: ${(data as any).type}`);
     }
   } catch (error) {
-    console.error("Error triggering job via trigger.dev:", error);
+    getLogger("jobs").note("error", "Error triggering job via trigger.dev:", { err: error });
     throw error;
   }
 }
@@ -63,14 +64,14 @@ export async function addScheduledJobViaTrigger(
     // For scheduled jobs, we would typically set these up through the trigger.dev UI
     // Or use the trigger.dev API to create triggers
     // For now, return a placeholder that indicates the job was scheduled
-    console.log(`Scheduled job ${data.type} with cron: ${cronExpression}`);
+    getLogger("jobs").note("debug", `Scheduled job ${data.type} with cron: ${cronExpression}`);
 
     return {
       id: options?.jobId || `scheduled-${Date.now()}`,
       cronExpression,
     };
   } catch (error) {
-    console.error("Error adding scheduled job to trigger.dev:", error);
+    getLogger("jobs").note("error", "Error adding scheduled job to trigger.dev:", { err: error });
     throw error;
   }
 }
@@ -94,19 +95,19 @@ export async function getQueueStatus(): Promise<QueueStatus> {
  * Pause the queue
  */
 export async function pauseQueue(): Promise<void> {
-  console.log("Queue pause requested (trigger.dev manages this via API/dashboard)");
+  getLogger("jobs").note("debug", "Queue pause requested (trigger.dev manages this via API/dashboard)");
 }
 
 /**
  * Resume the queue
  */
 export async function resumeQueue(): Promise<void> {
-  console.log("Queue resume requested (trigger.dev manages this via API/dashboard)");
+  getLogger("jobs").note("debug", "Queue resume requested (trigger.dev manages this via API/dashboard)");
 }
 
 /**
  * Clean up resources
  */
 export async function closeQueue(): Promise<void> {
-  console.log("Closing trigger.dev queue connections");
+  getLogger("jobs").note("debug", "Closing trigger.dev queue connections");
 }

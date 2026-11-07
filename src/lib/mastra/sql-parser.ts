@@ -15,6 +15,7 @@ import type {
   SqlFromItem,
   SqlTableRef,
 } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 const sqlParser = new Parser();
 
@@ -38,7 +39,7 @@ export function extractEntitiesFromSql(sql: string, dialect: string = "sqlite"):
     }
   } catch (parseError) {
     // Fallback: use regex-based extraction if parser fails
-    console.warn("SQL parser failed, falling back to regex extraction:", parseError);
+    getLogger("nlquery").note("warn", "SQL parser failed, falling back to regex extraction:", { err: parseError });
     extractEntitiesViaRegex(sql, entities, seen);
   }
 

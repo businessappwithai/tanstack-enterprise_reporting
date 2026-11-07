@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { EntityService } from "@/lib/metadata/entity-service";
@@ -14,7 +16,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/data-sources/$id/entities")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/data-sources/$id/entities", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -70,16 +72,9 @@ export const Route = createFileRoute("/api/data-sources/$id/entities")({
 
           return json({ success: true, data: { entities, total } });
         } catch (error) {
-          console.error("Data source entities error:", error);
-          return json(
-            {
-              success: false,
-              error: { message: error instanceof Error ? error.message : "Internal server error" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
     },
   },
 });

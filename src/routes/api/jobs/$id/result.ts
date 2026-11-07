@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
 import { contentTypeFor, resolveOutputFile } from "@/lib/jobs/output-dir";
@@ -21,7 +23,7 @@ export const Route = createFileRoute("/api/jobs/$id/result")({
       // `$id` is a job *execution*, as the Jobs page's "Download Result" link has it. The file
       // holds data its job's owner was allowed to read when it ran, so it goes to that owner
       // or an administrator - not to anyone who may merely view jobs.
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/jobs/$id/result", async ({ request, params }) => {
         try {
           const session = await auth(request);
           if (!session?.user) return fail(401, "UNAUTHORIZED", "Not authenticated");
@@ -70,10 +72,10 @@ export const Route = createFileRoute("/api/jobs/$id/result")({
             },
           });
         } catch (error) {
-          console.error("Error downloading job result:", error);
+          recordFailure(error, "Error downloading job result:");
           return fail(500, "SERVER_ERROR", "Failed to download the result");
         }
-      },
+      }),
     },
   },
 });

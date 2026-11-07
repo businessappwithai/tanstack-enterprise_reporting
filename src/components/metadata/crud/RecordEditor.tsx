@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEntity, useEntityRecords } from "@/hooks/metadata/use-metadata-queries";
 import type { MetadataEntityWithFields } from "@/types/database";
 import { RelationshipPicker } from "../RelationshipPicker";
+import { getLogger } from "@/lib/logging/logger";
 
 interface RecordEditorProps {
   dataSourceId: string;
@@ -78,7 +79,7 @@ export function RecordEditor({
 
         onSave?.();
       } catch (error) {
-        console.error("Error saving record:", error);
+        getLogger("client").note("error", "Error saving record:", { err: error });
         throw error;
       } finally {
         setIsSubmitting(false);

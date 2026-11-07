@@ -7,6 +7,7 @@
 
 import { createClient, type RedisClientType } from "redis";
 import { EmbeddingService } from "./embedding-service";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface OpenKBQuery {
   nlQuestion: string;
@@ -46,9 +47,9 @@ export class OpenKBClient {
     try {
       await this.redis.connect();
       this.isInitialized = true;
-      console.log("[OpenKB] Connected to Redis");
+      getLogger("nlquery").note("debug", "[OpenKB] Connected to Redis");
     } catch (error) {
-      console.error("[OpenKB] Failed to connect to Redis:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to connect to Redis:", { err: error });
       throw error;
     }
   }
@@ -92,10 +93,10 @@ export class OpenKBClient {
       const embedding = await this.embeddingService.embed(query.nlQuestion);
       await this.redis.hSet(`openkb:${roleId}:embeddings`, queryId, JSON.stringify(embedding));
 
-      console.log(`[OpenKB] Logged query ${queryId} for role ${roleId}`);
+      getLogger("nlquery").note("debug", `[OpenKB] Logged query ${queryId} for role ${roleId}`);
       return queryId;
     } catch (error) {
-      console.error("[OpenKB] Failed to log query:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to log query:", { err: error });
       throw error;
     }
   }
@@ -125,7 +126,7 @@ export class OpenKBClient {
           const similarity = this.cosineSimilarity(queryEmbedding, storedEmbedding);
           similarities.push({ queryId, similarity });
         } catch (_err) {
-          console.warn(`[OpenKB] Failed to parse embedding for ${queryId}`);
+          getLogger("nlquery").note("warn", `[OpenKB] Failed to parse embedding for ${queryId}`);
         }
       }
 
@@ -147,14 +148,14 @@ export class OpenKBClient {
               similarity,
             });
           } catch (_err) {
-            console.warn(`[OpenKB] Failed to parse metadata for ${queryId}`);
+            getLogger("nlquery").note("warn", `[OpenKB] Failed to parse metadata for ${queryId}`);
           }
         }
       }
 
       return results;
     } catch (error) {
-      console.error("[OpenKB] Failed to find similar queries:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to find similar queries:", { err: error });
       return [];
     }
   }
@@ -184,14 +185,14 @@ export class OpenKBClient {
               roleId,
             });
           } catch (_err) {
-            console.warn(`[OpenKB] Failed to parse metadata for ${queryId}`);
+            getLogger("nlquery").note("warn", `[OpenKB] Failed to parse metadata for ${queryId}`);
           }
         }
       }
 
       return results;
     } catch (error) {
-      console.error("[OpenKB] Failed to get recent queries:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to get recent queries:", { err: error });
       return [];
     }
   }
@@ -209,10 +210,10 @@ export class OpenKBClient {
         this.redis.zRem(`openkb:${roleId}:queries`, queryId),
       ]);
 
-      console.log(`[OpenKB] Deleted query ${queryId} from role ${roleId}`);
+      getLogger("nlquery").note("debug", `[OpenKB] Deleted query ${queryId} from role ${roleId}`);
       return true;
     } catch (error) {
-      console.error("[OpenKB] Failed to delete query:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to delete query:", { err: error });
       return false;
     }
   }
@@ -230,10 +231,10 @@ export class OpenKBClient {
         this.redis.del(`openkb:${roleId}:queries`),
       ]);
 
-      console.log(`[OpenKB] Cleared all data for role ${roleId}`);
+      getLogger("nlquery").note("debug", `[OpenKB] Cleared all data for role ${roleId}`);
       return true;
     } catch (error) {
-      console.error("[OpenKB] Failed to clear role:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to clear role:", { err: error });
       return false;
     }
   }
@@ -267,7 +268,7 @@ export class OpenKBClient {
         newestQuery,
       };
     } catch (error) {
-      console.error("[OpenKB] Failed to get stats:", error);
+      getLogger("nlquery").note("error", "[OpenKB] Failed to get stats:", { err: error });
       return { queryCount: 0 };
     }
   }

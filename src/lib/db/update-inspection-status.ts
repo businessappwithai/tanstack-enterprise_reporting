@@ -3,6 +3,7 @@
  * If a data source has metadata entities, it means it has been inspected
  */
 import { getDb } from "./config";
+import { getLogger } from "@/lib/logging/logger";
 
 export async function updateInspectionStatus(): Promise<void> {
   const db = getDb();
@@ -17,7 +18,7 @@ export async function updateInspectionStatus(): Promise<void> {
       .execute();
 
     if (dataSources.length === 0) {
-      console.log("[InspectionStatus] No data sources to update");
+      getLogger("datasource").note("debug", "[InspectionStatus] No data sources to update");
       return;
     }
 
@@ -45,12 +46,12 @@ export async function updateInspectionStatus(): Promise<void> {
           .where("is_inspected", "=", false)
           .execute() as any);
 
-        console.log(`[InspectionStatus] Updated data source ${ds.id} as inspected`);
+        getLogger("datasource").note("debug", `[InspectionStatus] Updated data source ${ds.id} as inspected`);
       }
     }
 
-    console.log("[InspectionStatus] Inspection status update complete");
+    getLogger("datasource").note("debug", "[InspectionStatus] Inspection status update complete");
   } catch (error) {
-    console.error("[InspectionStatus] Error updating inspection status:", error);
+    getLogger("datasource").note("error", "[InspectionStatus] Error updating inspection status:", { err: error });
   }
 }
