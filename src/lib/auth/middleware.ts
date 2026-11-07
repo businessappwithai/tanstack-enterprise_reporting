@@ -1,6 +1,8 @@
 "use server";
 
 import { getRequest } from "@tanstack/react-start/server";
+import { appError } from "@/lib/errors/app-error";
+import { getLogger } from "@/lib/logging/logger";
 import { getSessionFromHeaders, SessionUnavailableError } from "./session";
 
 /**
@@ -16,7 +18,7 @@ export async function getServerSession() {
     return await getSessionFromHeaders(request.headers);
   } catch (e) {
     if (e instanceof SessionUnavailableError) throw e;
-    console.error("Failed to get session:", e);
+    getLogger("auth").event("auth.session.unavailable", { err: e });
     return null;
   }
 }
@@ -25,7 +27,7 @@ export async function getServerSession() {
 export async function requireAuth() {
   const session = await getServerSession();
   if (!session?.user) {
-    throw new Error("UNAUTHORIZED");
+    throw appError("UNAUTHORIZED");
   }
   return session;
 }
