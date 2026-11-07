@@ -3,6 +3,7 @@ import { serverFailure } from "@/lib/errors/app-error";
 import { withApiHandler } from "@/lib/http/with-api-handler";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
+import { applyScope, scopeFor, shapeForViewer } from "@/lib/logging/log-access";
 import { json } from "@/lib/server/response";
 import {
   refuseWithoutPermission,
@@ -54,9 +55,15 @@ export const Route = createFileRoute("/api/logs/search")({
 
           // Get all logs and calculate similarity on the client side
           // (MariaDB doesn't have native vector similarity functions)
-          const allLogs = await db
-            .selectFrom("logs")
-            .select([
+          const sessionRoles: string[] = (session.user as { roles?: string[] }).roles ?? [];
+          const viewer = {
+            id: session.user.id,
+            isAdmin: sessionRoles.some((r) => r.toLowerCase().includes("admin")),
+          };
+          const allLogs = await applyScope(
+            db
+              .selectFrom("logs")
+              .select([
               "id",
               "timestamp",
               "level",
@@ -68,9 +75,9 @@ export const Route = createFileRoute("/api/logs/search")({
               "error_stack",
               "request_id",
               "message_vector",
-            ])
-            .where("user_id", "=", session.user.id as any)
-            .execute();
+              ]),
+            scopeFor(viewer)
+          ).execute();
 
           // Import cosine similarity function
           const { cosineSimilarity } = await import("@/lib/embeddings/vector-embeddings");
@@ -106,7 +113,7 @@ export const Route = createFileRoute("/api/logs/search")({
                 level: log.level,
                 message: log.message,
                 component: log.component,
-                user_id: log.user_id,
+                user_id: shapeForViewer(viewer, log).user_id,
                 similarity: log.similarity,
               })),
               total: resultsWithScores.length,
