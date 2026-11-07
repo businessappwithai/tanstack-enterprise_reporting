@@ -99,7 +99,7 @@ function DashboardViewerContent({ dashboardId }: { dashboardId: string }) {
           setLayout(layoutConfig.layouts.lg);
         }
       } catch (error) {
-        getLogger("client").note("error", "Error parsing layout config:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Error parsing layout config", err: error });
       }
     } else if (widgets.length > 0) {
       // Build layout from widgets' position_config

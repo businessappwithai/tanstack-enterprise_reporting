@@ -30,7 +30,7 @@ export async function getUserPermissions(userId: string) {
         const perms = JSON.parse(role.permissions);
         rolePermissions.push(...perms);
       } catch (e) {
-        getLogger("auth").note("error", "Failed to parse permissions for role:", { detail: [role.name, e] });
+        getLogger("auth").event("auth.check.failed", { what: "Failed to parse permissions for role", detail: [role.name, e] });
       }
     }
   }

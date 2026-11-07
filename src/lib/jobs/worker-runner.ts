@@ -17,12 +17,12 @@ import {
   emailBatchTask,
   scheduledRefreshTask,
 } from "./trigger-tasks";
+import { getLogger } from "@/lib/logging/logger";
 import { startJobDefinitionRunner, stopJobDefinitionRunner } from "./job-definition-runner";
 import {
   startOnPremiseCronRunner,
   stopOnPremiseCronRunner,
 } from "@/lib/monitoring/monitoring-scheduler";
-import { getLogger } from "@/lib/logging/logger";
 
 const WORKER_CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || "5", 10);
 
@@ -31,32 +31,19 @@ function isTriggerDevConfigured(): boolean {
 }
 
 export async function initializeWorkers(): Promise<void> {
-  getLogger("jobs").note("debug", "✓ Trigger.dev task definitions loaded");
-  getLogger("jobs").note("debug", `  - reportGenerationTask (concurrency: ${WORKER_CONCURRENCY})`);
-  getLogger("jobs").note("debug", `  - dataExportTask (concurrency: ${WORKER_CONCURRENCY})`);
-  getLogger("jobs").note("debug", `  - emailBatchTask (concurrency: ${WORKER_CONCURRENCY})`);
-  getLogger("jobs").note("debug", `  - scheduledRefreshTask (concurrency: ${WORKER_CONCURRENCY})`);
-
   // Job definitions are scheduled by neither backend below, so this runs in both modes.
   startJobDefinitionRunner();
 
-  if (isTriggerDevConfigured()) {
-    getLogger("jobs").note("debug", "");
-    getLogger("jobs").note("debug", "Jobs are now being processed by Trigger.dev (self-hosted):");
-    getLogger("jobs").note("debug", `  - TRIGGER_API_URL: ${process.env.TRIGGER_API_URL}`);
-    getLogger("jobs").note("debug", "  - Configure retries and timeouts in trigger.config.ts");
-  } else {
-    getLogger("jobs").note("debug", "");
-    getLogger("jobs").note("debug", "TRIGGER_API_URL not set — starting on-premise cron runner as fallback.");
-    startOnPremiseCronRunner();
-  }
+  const backend = isTriggerDevConfigured() ? "trigger.dev" : "on-premise cron";
+  if (backend === "on-premise cron") startOnPremiseCronRunner();
+
+  getLogger("jobs").event("jobs.workers.started", { backend, concurrency: WORKER_CONCURRENCY });
 }
 
 export async function shutdownWorkers(): Promise<void> {
-  getLogger("jobs").note("debug", "Shutting down workers...");
   stopOnPremiseCronRunner();
   stopJobDefinitionRunner();
-  getLogger("jobs").note("debug", "✓ Workers stopped");
+  getLogger("jobs").event("jobs.workers.stopped");
 }
 
 export async function checkWorkerHealth(): Promise<{ healthy: boolean; message: string }> {

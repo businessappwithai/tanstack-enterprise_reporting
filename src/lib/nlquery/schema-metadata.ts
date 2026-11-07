@@ -41,7 +41,7 @@ export async function getSchemaMetadata(dataSource: DataSource): Promise<SchemaM
 
     return schema;
   } catch (error) {
-    getLogger("nlquery").note("error", "[Schema] Failed to fetch schema:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "Failed to fetch schema", err: error });
     // Return empty schema on error
     return { tables: [] };
   }
@@ -61,7 +61,7 @@ async function fetchDatabaseSchema(connection: any, clientType: string): Promise
     } else if (clientType === "sqlite3" || clientType === "sqlite") {
       tables.push(...(await fetchSqliteSchema(connection)));
     } else {
-      getLogger("nlquery").note("warn", `[Schema] Unsupported client type: ${clientType}`);
+      getLogger("nlquery").event("nlquery.translate.degraded", { what: `Unsupported client type: ${clientType}` });
       return { tables: [] };
     }
 
@@ -72,7 +72,7 @@ async function fetchDatabaseSchema(connection: any, clientType: string): Promise
       })),
     };
   } catch (error) {
-    getLogger("nlquery").note("error", "[Schema] Error fetching schema:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "Error fetching schema", err: error });
     return { tables: [] };
   }
 }
@@ -105,7 +105,7 @@ async function fetchPostgresSchema(connection: any): Promise<TableMetadata[]> {
       columns: row.columns || [],
     }));
   } catch (error) {
-    getLogger("nlquery").note("error", "[Schema] PostgreSQL schema fetch failed:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "PostgreSQL schema fetch failed", err: error });
     return [];
   }
 }
@@ -142,13 +142,13 @@ async function fetchSqliteSchema(connection: any): Promise<TableMetadata[]> {
           columns,
         });
       } catch (error) {
-        getLogger("nlquery").note("warn", `[Schema] Failed to get columns for table ${tableName}:`, { err: error });
+        getLogger("nlquery").event("nlquery.translate.degraded", { what: `Failed to get columns for table ${tableName}`, err: error });
       }
     }
 
     return tables;
   } catch (error) {
-    getLogger("nlquery").note("error", "[Schema] SQLite schema fetch failed:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "SQLite schema fetch failed", err: error });
     return [];
   }
 }

@@ -43,12 +43,6 @@ export interface ChannelLogger {
   readonly channel: string;
   readonly level: ConfiguredLevel;
   event(id: EventId, fields?: LogFields): void;
-  /**
-   * A free-text line at a level, for code not yet given events of its own. The level is still
-   * the spec's to govern (`LOG_LEVEL_<CHANNEL>`) and the fields are still redacted; what it
-   * lacks is a stable id. Prefer `event`.
-   */
-  note(level: "debug" | "info" | "warn" | "error", what: string, fields?: LogFields): void;
   child(bindings: LogFields): ChannelLogger;
 }
 
@@ -303,8 +297,7 @@ function wrap(pinoLogger: PinoLogger, channel: string, initial: ConfiguredLevel)
         payload.err = new Error(typeof payload.err === "string" ? payload.err : JSON.stringify(redactFields(payload.err)));
       }
 
-      // A note's own sentence is its message; every other event's comes from the spec.
-      const message = id.startsWith("note.") && typeof payload.what === "string" ? payload.what : declared.message;
+      const message = declared.message;
       if (rank(level) <= LEVELS[declared.level]) pinoLogger[declared.level](payload, message);
 
       if (wantsSink(declared.level) && rank(level) <= LEVELS[declared.level]) {
@@ -322,9 +315,6 @@ function wrap(pinoLogger: PinoLogger, channel: string, initial: ConfiguredLevel)
           code: typeof rest.errorCode === "string" ? rest.errorCode : null,
         });
       }
-    },
-    note(noteLevel, what, fields = {}) {
-      this.event(`note.${noteLevel}` as EventId, { ...fields, what });
     },
     child(bindings) {
       return wrap(pinoLogger.child(bindings), channel, pinoLogger.level as ConfiguredLevel);

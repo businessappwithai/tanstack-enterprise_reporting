@@ -94,7 +94,7 @@ export function LogsViewer() {
           setComponents(data.data || []);
         }
       } catch (error) {
-        getLogger("client").note("error", "Failed to fetch filters:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Failed to fetch filters", err: error });
       }
     };
     fetchFilters();

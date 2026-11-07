@@ -61,13 +61,13 @@ export function Header({ user, onMobileMenuToggle, mobileMenuOpen }: HeaderProps
         const result = await fetchNotificationsFn({ data: { includeRead: showReadNotifications } });
         if (!result.success) {
           if (result.error !== "Unauthorized") {
-            getLogger("client").note("warn", "Failed to fetch notifications:", { detail: [result.error] });
+            getLogger("client").event("client.ui.degraded", { what: "Failed to fetch notifications", detail: [result.error] });
           }
           return [];
         }
         return result.data || [];
       } catch (error) {
-        getLogger("client").note("error", "Error fetching notifications:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Error fetching notifications", err: error });
         return [];
       }
     },
@@ -90,7 +90,7 @@ export function Header({ user, onMobileMenuToggle, mobileMenuOpen }: HeaderProps
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
     onError: (error) => {
-      getLogger("client").note("error", "Error marking notification as read:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error marking notification as read", err: error });
     },
   });
 
@@ -107,7 +107,7 @@ export function Header({ user, onMobileMenuToggle, mobileMenuOpen }: HeaderProps
       toast.success("All notifications marked as read");
     },
     onError: (error) => {
-      getLogger("client").note("error", "Error marking all notifications as read:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error marking all notifications as read", err: error });
     },
   });
 
@@ -124,7 +124,7 @@ export function Header({ user, onMobileMenuToggle, mobileMenuOpen }: HeaderProps
       toast.success("Notification deleted");
     },
     onError: (error) => {
-      getLogger("client").note("error", "Error deleting notification:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error deleting notification", err: error });
     },
   });
 
@@ -140,7 +140,7 @@ export function Header({ user, onMobileMenuToggle, mobileMenuOpen }: HeaderProps
       navigate({ to: "/login" });
     },
     onError: (error) => {
-      getLogger("client").note("error", "Logout error:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Logout error", err: error });
       // Fallback: still redirect even if there was an error
       queryClient.clear();
       navigate({ to: "/login" });

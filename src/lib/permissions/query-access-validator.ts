@@ -159,7 +159,7 @@ export async function validateQueryAccess(
       },
     };
   } catch (error) {
-    getLogger("auth").note("error", "[QueryAccess] Validation error:", { err: error });
+    getLogger("auth").event("auth.check.failed", { what: "Validation error", err: error });
     // On error, deny access (fail-safe)
     return {
       allowed: false,
@@ -181,7 +181,7 @@ export async function getAccessibleEntities(
     const entities = await getUserAccessibleEntities(userId, dataSourceId);
     return entities.map((e) => e.entity_name);
   } catch (error) {
-    getLogger("auth").note("error", "[QueryAccess] Failed to get accessible entities:", { err: error });
+    getLogger("auth").event("auth.check.failed", { what: "Failed to get accessible entities", err: error });
     return [];
   }
 }
@@ -208,7 +208,7 @@ export async function getColumnRestrictions(
 
     return JSON.parse(tableEntity.column_restrictions);
   } catch (error) {
-    getLogger("auth").note("error", "[QueryAccess] Failed to get column restrictions:", { err: error });
+    getLogger("auth").event("auth.check.failed", { what: "Failed to get column restrictions", err: error });
     return undefined;
   }
 }

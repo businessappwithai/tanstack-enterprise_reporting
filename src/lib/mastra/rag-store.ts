@@ -151,7 +151,7 @@ export async function findSimilarQueries(
         similarity: r.similarity,
       }));
   } catch (e) {
-    getLogger("nlquery").note("warn", "[RAG] findSimilarQueries failed:", { err: e });
+    getLogger("nlquery").event("nlquery.rag.degraded", { what: "FindSimilarQueries failed", err: e });
     return [];
   }
 }
@@ -200,7 +200,7 @@ export async function findRelevantSchema(
         similarity: r.similarity,
       }));
   } catch (e) {
-    getLogger("nlquery").note("warn", "[RAG] findRelevantSchema failed:", { err: e });
+    getLogger("nlquery").event("nlquery.rag.degraded", { what: "FindRelevantSchema failed", err: e });
     return [];
   }
 }
@@ -251,7 +251,7 @@ export async function storeQueryEmbedding(
       `.execute(connection);
     }
   } catch (e) {
-    getLogger("nlquery").note("warn", "[RAG] storeQueryEmbedding failed:", { err: e });
+    getLogger("nlquery").event("nlquery.rag.degraded", { what: "StoreQueryEmbedding failed", err: e });
   }
 }
 
@@ -293,7 +293,7 @@ export async function storeSchemaEmbeddings(
           updated_at = NOW()
       `.execute(connection);
     } catch (e) {
-      getLogger("nlquery").note("warn", `[RAG] storeSchemaEmbeddings failed for ${table.name}:`, { err: e });
+      getLogger("nlquery").event("nlquery.rag.degraded", { what: `StoreSchemaEmbeddings failed for ${table.name}`, err: e });
     }
   }
 }
@@ -336,7 +336,7 @@ export async function buildRagContext(dataSource: DataSource, queryText: string)
 
     return parts.join("\n");
   } catch (e) {
-    getLogger("nlquery").note("warn", "[RAG] buildRagContext failed:", { err: e });
+    getLogger("nlquery").event("nlquery.rag.degraded", { what: "BuildRagContext failed", err: e });
     return "";
   }
 }

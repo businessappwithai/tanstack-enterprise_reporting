@@ -37,10 +37,8 @@ class ErrorLogger {
     // production a render error never left the browser: the first anyone heard of it was a
     // person describing a blank page. A warning or above is sent to the bounded /api/logs
     // route by the logger, and the System Logs screen shows it.
-    getLogger("client").note("error", `Render error: ${error.message}`, {
-      stack: error.stack,
-      url: errorLog.url,
-    });
+    getLogger("client").event("client.ui.failed", { what: `Render error: ${error.message}`, stack: error.stack,
+      url: errorLog.url, });
 
     // Store in sessionStorage for persistence across page reloads
     try {

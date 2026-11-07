@@ -24,7 +24,7 @@ export function useLogger(context: LogContext) {
           }),
         });
       } catch (error) {
-        getLogger("client").note("error", "[Logger Error]", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "", err: error });
       }
     },
     [context.component]

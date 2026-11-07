@@ -52,6 +52,29 @@ describe("the platform's source", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("has no free-text log calls: a line is a declared event", () => {
+    // `note(level, text)` carried 344 console calls through the move to the logger without ids.
+    // It is gone; this keeps it gone.
+    const offenders = files
+      .filter((file) => !/^lib\/logging\//.test(rel(file)))
+      .filter((file) => /\.note\(/.test(readFileSync(file, "utf-8")))
+      .map(rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("never logs a recipient's address from the email batch", () => {
+    const worker = readFileSync(join(SRC, "lib/jobs/workers/email-batch-worker.ts"), "utf-8");
+    const loggedLines = worker.split("\n").filter((line) => /getLogger\(/.test(line));
+    expect(loggedLines.some((line) => /recipientEmail|failedRecipients/.test(line))).toBe(false);
+  });
+
+  it("does not write a generated password into the structured log", () => {
+    const bootstrap = readFileSync(join(SRC, "lib/db/bootstrap.ts"), "utf-8");
+    const loggedLines = bootstrap.split("\n").filter((line) => /getLogger\(/.test(line));
+    expect(loggedLines.some((line) => /generated\b(?!\s*:)/.test(line) && /\$\{generated\}/.test(line))).toBe(false);
+    expect(bootstrap).toContain("process.stderr.write(");
+  });
+
   it("wraps every API route's handlers in withApiHandler", () => {
     // The WebSocket upgrade answers 101 and keeps the connection; a wrapper that rewrites the
     // response has no place there.

@@ -210,7 +210,7 @@ export async function findSimilarQueries(
       similarity: r.similarity,
     }));
   } catch (error) {
-    getLogger("nlquery").note("warn", "[NLQueryContext] pgvector query failed, using fallback", { err: error });
+    getLogger("nlquery").event("nlquery.translate.degraded", { what: "Pgvector query failed, using fallback", err: error });
     // Fallback to non-vector query
     return findSimilarQueries(dataSourceId, roleName, undefined, limit);
   }

@@ -100,7 +100,7 @@ export function useCrossFilterDB(config: CrossFilterConfig): UseCrossFilterRetur
         await activeFiltersCollection.insert(newFilter);
       }
     } catch (error) {
-      getLogger("client").note("error", "Failed to apply filter:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Failed to apply filter", err: error });
     }
   };
 
@@ -111,7 +111,7 @@ export function useCrossFilterDB(config: CrossFilterConfig): UseCrossFilterRetur
     try {
       await activeFiltersCollection.delete(filterId);
     } catch (error) {
-      getLogger("client").note("error", "Failed to remove filter:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Failed to remove filter", err: error });
     }
   };
 
@@ -127,7 +127,7 @@ export function useCrossFilterDB(config: CrossFilterConfig): UseCrossFilterRetur
         await activeFiltersCollection.delete(filter.id);
       }
     } catch (error) {
-      getLogger("client").note("error", "Failed to clear filters:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Failed to clear filters", err: error });
     }
   };
 

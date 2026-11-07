@@ -126,7 +126,7 @@ async function lookUpWithOneRetry(
     try {
       return await lookup();
     } catch (e) {
-      getLogger("auth").note("error", "Failed to resolve session:", { err: e });
+      getLogger("auth").event("auth.check.failed", { what: "Failed to resolve session", err: e });
       throw new SessionUnavailableError(e);
     }
   }

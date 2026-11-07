@@ -24,7 +24,7 @@ export class ConnectionTestService {
     const startTime = Date.now();
 
     if (!clientType?.trim()) {
-      getLogger("datasource").note("warn", `[SERVICE:${serviceId}] Database type is required`);
+      getLogger("datasource").event("datasource.connection.degraded", { what: `Database type is required` });
       return {
         connected: false,
         message: "Database type is required",
@@ -32,33 +32,25 @@ export class ConnectionTestService {
     }
 
     try {
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Starting connection test`);
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Client type: ${clientType}`);
 
       // First validate the config
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 1: Validating configuration...`);
       const validationResult = this.validateConfig(clientType, config);
       if (!validationResult.valid) {
         const duration = Date.now() - startTime;
-        getLogger("datasource").note("warn", `[SERVICE:${serviceId}] Config validation FAILED after ${duration}ms: ${validationResult.message}`);
+        getLogger("datasource").event("datasource.test.refused", { reason: validationResult.message });
         return {
           connected: false,
           message: validationResult.message,
         };
       }
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 1: Config validation OK`);
 
       // Then actually test the connection (real database connectivity)
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 2: Testing actual database connection...`);
       const result = await testDatabaseConnection(
         clientType.toLowerCase() as DatabaseClientType,
         config
       );
 
       const duration = Date.now() - startTime;
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 2: Connection test completed in ${duration}ms`);
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Result: success=${result.success}, latency=${result.latency}ms`);
-      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Message: ${result.message}`);
 
       return {
         connected: result.success,
@@ -71,12 +63,11 @@ export class ConnectionTestService {
       const errorCode = error instanceof Error ? (error as any).code : "UNKNOWN";
       const errorStack = error instanceof Error ? error.stack : "";
 
-      getLogger("datasource").note("error", `[SERVICE:${serviceId}] EXCEPTION after ${duration}ms`);
-      getLogger("datasource").note("error", `[SERVICE:${serviceId}] Error Code: ${errorCode}`);
-      getLogger("datasource").note("error", `[SERVICE:${serviceId}] Error Message: ${message}`);
-      if (errorStack) {
-        getLogger("datasource").note("error", `[SERVICE:${serviceId}] Stack Trace:\n${errorStack}`);
-      }
+      getLogger("datasource").event("datasource.test.failed", {
+        errorCode: String(errorCode ?? "UNKNOWN"),
+        durationMs: duration,
+        err: error,
+      });
 
       return {
         connected: false,

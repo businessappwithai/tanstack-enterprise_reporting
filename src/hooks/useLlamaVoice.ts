@@ -72,7 +72,7 @@ export function useLlamaVoice(options: UseLlamaVoiceOptions = {}) {
             options.onError?.(error);
           }
         } catch (err) {
-          getLogger("voice").note("error", "[useLlamaVoice] Message parse error:", { err: err });
+          getLogger("voice").event("voice.client.failed", { what: "Message parse error", err: err });
         }
       };
 

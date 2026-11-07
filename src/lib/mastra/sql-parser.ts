@@ -39,7 +39,7 @@ export function extractEntitiesFromSql(sql: string, dialect: string = "sqlite"):
     }
   } catch (parseError) {
     // Fallback: use regex-based extraction if parser fails
-    getLogger("nlquery").note("warn", "SQL parser failed, falling back to regex extraction:", { err: parseError });
+    getLogger("nlquery").event("nlquery.pipeline.degraded", { what: "SQL parser failed, falling back to regex extraction", err: parseError });
     extractEntitiesViaRegex(sql, entities, seen);
   }
 

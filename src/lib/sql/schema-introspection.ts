@@ -8,7 +8,6 @@ import type {
   TableInfo,
   ViewInfo,
 } from "@/types/api";
-import { getLogger } from "@/lib/logging/logger";
 
 // external data source connections have unknown schema
 type AnyKysely = Kysely<any>;
@@ -26,7 +25,6 @@ export async function introspectSchema(
 
   const addLog = (message: string) => {
     logs.push(`[${new Date().toISOString()}] ${message}`);
-    getLogger("sql").note("debug", String(message));
   };
 
   const result = await introspectSchemaInternal(connection, dialect, addLog);

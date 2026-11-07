@@ -59,6 +59,6 @@ export async function auditDsRbac(
       details: { area: "ds-rbac", ...details },
     });
   } catch (err) {
-    getLogger("auth").note("error", "[ds-rbac] Failed to audit-log a permission change:", { err: err });
+    getLogger("auth").event("auth.check.failed", { what: "Failed to audit-log a permission change", err: err });
   }
 }

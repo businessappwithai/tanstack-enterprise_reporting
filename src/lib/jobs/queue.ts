@@ -125,7 +125,7 @@ export async function addJob(
       status: "waiting",
     };
   } catch (error) {
-    getLogger("jobs").note("error", "Error adding job to trigger.dev:", { err: error });
+    getLogger("jobs").event("jobs.runner.failed", { what: "Error adding job to trigger.dev", err: error });
     throw error;
   }
 }
@@ -146,7 +146,6 @@ export async function addScheduledJob(
 
     // In trigger.dev, scheduled jobs are set up through triggers
     // This would typically be configured in the dashboard or via the trigger.dev API
-    getLogger("jobs").note("debug", `Scheduled job ${data.type} with cron: ${cronExpression}`);
 
     return {
       id: jobId,
@@ -155,7 +154,7 @@ export async function addScheduledJob(
       status: "delayed",
     };
   } catch (error) {
-    getLogger("jobs").note("error", "Error adding scheduled job to trigger.dev:", { err: error });
+    getLogger("jobs").event("jobs.runner.failed", { what: "Error adding scheduled job to trigger.dev", err: error });
     throw error;
   }
 }
@@ -164,7 +163,6 @@ export async function addScheduledJob(
  * Remove a scheduled job
  */
 export async function removeScheduledJob(jobId: string): Promise<boolean> {
-  getLogger("jobs").note("debug", `Removing scheduled job ${jobId} (managed via trigger.dev dashboard)`);
   return true;
 }
 
@@ -172,7 +170,6 @@ export async function removeScheduledJob(jobId: string): Promise<boolean> {
  * Get a job by ID
  */
 export async function getJob(jobId: string): Promise<Job<JobData, JobResult> | undefined> {
-  getLogger("jobs").note("debug", `Getting job ${jobId} (trigger.dev provides job tracking via API)`);
   return undefined;
 }
 
@@ -204,14 +201,12 @@ export async function getJobs(
  * Clean old jobs
  */
 export async function cleanOldJobs(grace: number = 1000, limit: number = 1000) {
-  getLogger("jobs").note("debug", "Job cleanup handled by trigger.dev retention policy");
 }
 
 /**
  * Close queue connections
  */
 export async function closeQueue() {
-  getLogger("jobs").note("debug", "Closing trigger.dev connections (managed automatically)");
 }
 
 /**
@@ -252,6 +247,5 @@ export const reportingQueue = {
  */
 export const queueEvents = {
   close: async () => {
-    getLogger("jobs").note("debug", "Queue events closed (trigger.dev manages events automatically)");
   },
 };

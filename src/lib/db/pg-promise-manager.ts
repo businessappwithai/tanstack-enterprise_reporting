@@ -22,7 +22,7 @@ interface PgConnectionConfig {
 const pgp = pgPromise({
   // Enable detailed error logging
   error(err, e) {
-    getLogger("datasource").note("error", "[pgPromise Error]", { detail: [{
+    getLogger("datasource").event("datasource.connection.failed", { what: "", detail: [{
       message: err.message,
       code: (err as any).code,
       query: e?.query,
@@ -86,7 +86,7 @@ export async function createPgPromiseConnection(config: PgConnectionConfig): Pro
       dialect: new PostgresDialect({ pool }),
     });
   } catch (error) {
-    getLogger("datasource").note("error", "[pgPromiseManager] Failed to create connection:", { err: error });
+    getLogger("datasource").event("datasource.connection.failed", { what: "Failed to create connection", err: error });
     throw error;
   }
 }

@@ -80,7 +80,7 @@ export async function processExportJob(data: ExportJobData): Promise<JobResult> 
     };
   } catch (error) {
     const duration = Date.now() - startTime;
-    getLogger("jobs").note("error", "Export job failed:", { err: error });
+    getLogger("jobs").event("jobs.export.failed", { what: "Export job failed", err: error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

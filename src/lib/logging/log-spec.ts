@@ -178,7 +178,7 @@ export type ErrorCode = keyof typeof ERRORS;
 /**
  * A channel declares the most verbose level it can be turned up to. The environment clamps it:
  * production logs at info whatever a channel declares, development shows debug. Every channel
- * carries `debug` events (and free-text notes), so each is declared at debug.
+ * carries `debug` events, so each is declared at debug.
  */
 export const CHANNELS = {
   app: "debug",
@@ -208,12 +208,6 @@ interface EventDef {
 }
 
 export const EVENTS = {
-  // The old free-text interface, kept in the spec so a line written through `note()` still has
-  // a level an operator controls. A call that matters should get an event of its own.
-  "note.debug": { channel: "app", level: "debug", message: "Note", fields: ["what"] },
-  "note.info": { channel: "app", level: "info", message: "Note", fields: ["what"] },
-  "note.warn": { channel: "app", level: "warn", message: "Warning", fields: ["what"] },
-  "note.error": { channel: "app", level: "error", message: "Failure", fields: ["what"] },
   "app.uncaught": { channel: "app", level: "fatal", message: "Uncaught exception", fields: ["err"] },
   "app.unhandled_rejection": { channel: "app", level: "error", message: "Unhandled promise rejection", fields: ["err"] },
   "app.shutdown": { channel: "app", level: "info", message: "Shutting down", fields: ["signal", "uptimeMs"] },
@@ -303,6 +297,81 @@ export const EVENTS = {
     fields: ["target", "err"],
   },
   "jobs.schedule.failed": { channel: "jobs", level: "warn", message: "Schedule could not be created", fields: ["target", "err"] },
+  // Operations that used to be console lines. One id per area and outcome, with `what`
+  // naming the operation; give a call that matters an event of its own.
+  "app.misc.degraded": { channel: "app", level: "warn", message: "Application degraded; continuing", fields: ["what"] },
+  "app.misc.failed": { channel: "app", level: "error", message: "Application failed", fields: ["what"] },
+  "app.serverfn.failed": { channel: "app", level: "error", message: "Server function failed", fields: ["what"] },
+  "app.startup.degraded": { channel: "app", level: "warn", message: "Start-up degraded; continuing", fields: ["what"] },
+  "app.startup.failed": { channel: "app", level: "error", message: "Start-up failed", fields: ["what"] },
+  "auth.check.failed": { channel: "auth", level: "error", message: "Access check failed", fields: ["what"] },
+  "client.ui.degraded": { channel: "client", level: "warn", message: "Interface degraded; continuing", fields: ["what"] },
+  "client.ui.failed": { channel: "client", level: "error", message: "Interface failed", fields: ["what"] },
+  "datasource.connection.degraded": { channel: "datasource", level: "warn", message: "Data source connection degraded; continuing", fields: ["what"] },
+  "datasource.connection.failed": { channel: "datasource", level: "error", message: "Data source connection failed", fields: ["what"] },
+  "datasource.inspection.failed": { channel: "datasource", level: "error", message: "Data source inspection failed", fields: ["what"] },
+  "datasource.inspection.trace": { channel: "datasource", level: "debug", message: "Data source inspection trace", fields: ["what"] },
+  "datasource.service.failed": { channel: "datasource", level: "error", message: "Data source service failed", fields: ["what"] },
+  "db.bootstrap.degraded": { channel: "db", level: "warn", message: "Database bootstrap degraded; continuing", fields: ["what"] },
+  "db.bootstrap.trace": { channel: "db", level: "debug", message: "Database bootstrap trace", fields: ["what"] },
+  "db.core.failed": { channel: "db", level: "error", message: "Database failed", fields: ["what"] },
+  "db.core.trace": { channel: "db", level: "debug", message: "Database trace", fields: ["what"] },
+  "email.send.failed": { channel: "email", level: "error", message: "Email delivery failed", fields: ["what"] },
+  "graph.sync.degraded": { channel: "graph", level: "warn", message: "Knowledge graph sync degraded; continuing", fields: ["what"] },
+  "graph.sync.trace": { channel: "graph", level: "debug", message: "Knowledge graph sync trace", fields: ["what"] },
+  "jobs.export.failed": { channel: "jobs", level: "error", message: "Export job failed", fields: ["what"] },
+  "jobs.monitoring.degraded": { channel: "jobs", level: "warn", message: "Monitoring degraded; continuing", fields: ["what"] },
+  "jobs.monitoring.failed": { channel: "jobs", level: "error", message: "Monitoring failed", fields: ["what"] },
+  "jobs.monitoring.trace": { channel: "jobs", level: "debug", message: "Monitoring trace", fields: ["what"] },
+  "jobs.runner.failed": { channel: "jobs", level: "error", message: "Job runner failed", fields: ["what"] },
+  "jobs.runner.trace": { channel: "jobs", level: "debug", message: "Job runner trace", fields: ["what"] },
+  "nlquery.openkb.degraded": { channel: "nlquery", level: "warn", message: "OpenKB degraded; continuing", fields: ["what"] },
+  "nlquery.openkb.failed": { channel: "nlquery", level: "error", message: "OpenKB failed", fields: ["what"] },
+  "nlquery.openkb.trace": { channel: "nlquery", level: "debug", message: "OpenKB trace", fields: ["what"] },
+  "nlquery.pipeline.degraded": { channel: "nlquery", level: "warn", message: "Natural-language pipeline degraded; continuing", fields: ["what"] },
+  "nlquery.pipeline.failed": { channel: "nlquery", level: "error", message: "Natural-language pipeline failed", fields: ["what"] },
+  "nlquery.rag.degraded": { channel: "nlquery", level: "warn", message: "Retrieval (RAG) degraded; continuing", fields: ["what"] },
+  "nlquery.translate.degraded": { channel: "nlquery", level: "warn", message: "SQL translation degraded; continuing", fields: ["what"] },
+  "nlquery.translate.failed": { channel: "nlquery", level: "error", message: "SQL translation failed", fields: ["what"] },
+  "nlquery.translate.trace": { channel: "nlquery", level: "debug", message: "SQL translation trace", fields: ["what"] },
+  "report.worker.degraded": { channel: "report", level: "warn", message: "Report generation degraded; continuing", fields: ["what"] },
+  "report.worker.failed": { channel: "report", level: "error", message: "Report generation failed", fields: ["what"] },
+  "report.worker.trace": { channel: "report", level: "debug", message: "Report generation trace", fields: ["what"] },
+  "sql.editor.degraded": { channel: "sql", level: "warn", message: "SQL editor degraded; continuing", fields: ["what"] },
+  "sql.editor.failed": { channel: "sql", level: "error", message: "SQL editor failed", fields: ["what"] },
+  "voice.client.failed": { channel: "voice", level: "error", message: "Voice failed", fields: ["what"] },
+  "db.bootstrap.password_generated": {
+    channel: "db",
+    level: "warn",
+    message: "A random password was generated",
+    fields: ["label"],
+  },
+  "db.bootstrap.password_ignored": {
+    channel: "db",
+    level: "warn",
+    message: "A bootstrap password variable was ignored",
+    fields: ["variable", "reason"],
+  },
+  "jobs.workers.started": {
+    channel: "jobs",
+    level: "info",
+    message: "Background workers started",
+    fields: ["backend", "concurrency"],
+  },
+  "jobs.workers.stopped": { channel: "jobs", level: "info", message: "Background workers stopped", fields: [] },
+  "jobs.email_batch.started": { channel: "jobs", level: "info", message: "Email batch started", fields: ["total"] },
+  "jobs.email_batch.completed": {
+    channel: "jobs",
+    level: "info",
+    message: "Email batch completed",
+    fields: ["total", "sent", "failed"],
+  },
+  "jobs.email_batch.recipient_failed": {
+    channel: "jobs",
+    level: "warn",
+    message: "An email in the batch could not be sent",
+    fields: ["position", "reason"],
+  },
   "logging.level.changed": {
     channel: "logging",
     level: "warn",

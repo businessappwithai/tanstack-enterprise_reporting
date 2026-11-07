@@ -78,7 +78,7 @@ function SQLEditorContent() {
           }
         })
         .catch((error) => {
-          getLogger("client").note("error", "Failed to load query:", { err: error });
+          getLogger("client").event("client.ui.failed", { what: "Failed to load query", err: error });
         });
     } else {
       setEditingQueryId(null);

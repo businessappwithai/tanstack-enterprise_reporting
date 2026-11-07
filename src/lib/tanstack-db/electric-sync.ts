@@ -55,7 +55,7 @@ export function createElectricSyncAdapter(config: ElectricSyncConfig) {
         // Cleanup: unsubscribe, flush changes, close connections
       };
     } catch (error) {
-      getLogger("client").note("error", `Failed to initialize ElectricSQL sync for ${collectionName}:`, { err: error });
+      getLogger("client").event("client.ui.failed", { what: `Failed to initialize ElectricSQL sync for ${collectionName}`, err: error });
       // Mark ready even on error to unblock the UI
       markReady();
       return () => {};
@@ -109,7 +109,6 @@ export async function configureElectricSQL(options: {
   // 4. Start background sync process
 
   // For now, this is a placeholder
-  getLogger("client").note("debug", "ElectricSQL configured with options:", { detail: [options] });
 }
 
 /**

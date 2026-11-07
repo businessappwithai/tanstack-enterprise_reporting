@@ -637,7 +637,7 @@ function buildConnectionString(): string {
 function initializeDatabase(): KyselyDB {
   const connectionString = buildConnectionString();
   const safeUrl = connectionString.replace(/:([^@]+)@/, ":***@");
-  getLogger("db").note("debug", `[db] Connecting to PostgreSQL: ${safeUrl}`);
+  getLogger("db").event("db.core.trace", { what: `Connecting to PostgreSQL: ${safeUrl}` });
 
   const pool = new PostgresPool({
     connectionString,
@@ -688,8 +688,8 @@ export function getDb(): KyselyDB {
     db = initializeDatabase();
 
     bootstrapPromise = bootstrapOnce(db)
-      .then(() => getLogger("db").note("debug", "[db] Database ready"))
-      .catch((err) => getLogger("db").note("error", "[db] Bootstrap failed:", { err: err }));
+      .then(() => getLogger("db").event("db.core.trace", { what: "Database ready" }))
+      .catch((err) => getLogger("db").event("db.core.failed", { what: "Bootstrap failed", err: err }));
 
     // internal bootstrap tracking
     (db as any).__bootstrapPromise = bootstrapPromise;
@@ -711,7 +711,7 @@ export async function closeDb(): Promise<void> {
     try {
       await db.destroy();
     } catch (err) {
-      getLogger("db").note("error", "[db] Error closing database:", { err: err });
+      getLogger("db").event("db.core.failed", { what: "Error closing database", err: err });
     }
     db = null;
   }

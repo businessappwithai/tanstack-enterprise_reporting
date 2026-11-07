@@ -44,7 +44,7 @@ export function SchemaInstructionsBrowser({
           setDataSources(result.items as unknown as DataSource[]);
         }
       } catch (error) {
-        getLogger("client").note("error", "Failed to fetch data sources:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Failed to fetch data sources", err: error });
       }
     };
 
@@ -69,7 +69,7 @@ export function SchemaInstructionsBrowser({
           }));
         }
       } catch (error) {
-        getLogger("client").note("error", "Failed to fetch schema:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Failed to fetch schema", err: error });
       }
     };
 

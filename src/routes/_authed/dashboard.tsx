@@ -51,7 +51,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return 0;
       }
-      getLogger("client").note("error", `Error counting ${tableName}:`, { err: error });
+      getLogger("client").event("client.ui.failed", { what: `Error counting ${tableName}`, err: error });
       return 0;
     }
   };
@@ -68,7 +68,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return 0;
       }
-      getLogger("client").note("error", "Error counting scheduled jobs:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error counting scheduled jobs", err: error });
       return 0;
     }
   };
@@ -87,7 +87,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return [];
       }
-      getLogger("client").note("error", "Error loading recent executions:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error loading recent executions", err: error });
       return [];
     }
   };
@@ -104,7 +104,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return [];
       }
-      getLogger("client").note("error", "Error loading recent activity:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error loading recent activity", err: error });
       return [];
     }
   };
