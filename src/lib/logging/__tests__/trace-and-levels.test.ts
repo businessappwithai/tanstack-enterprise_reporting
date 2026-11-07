@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import {
+  applyStoredLevels,
   getChannelLevels,
   getLogger,
   isChannel,
   isSettableLevel,
+  markPersisted,
   resetChannelLevel,
   resetLoggerForTesting,
   setChannelLevel,
@@ -85,5 +87,44 @@ describe("changing a level while running", () => {
       expect(isSettableLevel(level)).toBe(true);
     }
     for (const level of ["DEBUG", "loud", "", null, 3]) expect(isSettableLevel(level)).toBe(false);
+  });
+});
+
+describe("stored levels", () => {
+  afterEach(() => {
+    resetLoggerForTesting();
+  });
+
+  it("applies what the table says and marks it persisted", () => {
+    applyStoredLevels([{ channel: "sql", level: "trace" }]);
+    expect(getChannelLevels().find((r) => r.channel === "sql")).toMatchObject({
+      effective: "trace",
+      overridden: true,
+      persisted: true,
+    });
+  });
+
+  it("ignores a row naming a channel it does not have or a level that is not one", () => {
+    applyStoredLevels([
+      { channel: "no_such_channel", level: "debug" },
+      { channel: "sql", level: "loud" },
+    ]);
+    expect(getChannelLevels().every((r) => !r.overridden)).toBe(true);
+  });
+
+  it("returns a channel to its configured level when another instance removed its row", () => {
+    applyStoredLevels([{ channel: "sql", level: "trace" }]);
+    applyStoredLevels([]);
+    expect(getChannelLevels().find((r) => r.channel === "sql")).toMatchObject({
+      overridden: false,
+      persisted: false,
+    });
+  });
+
+  it("leaves an override that was only ever in memory alone", () => {
+    setChannelLevel("sql", "trace");
+    markPersisted("sql", false);
+    applyStoredLevels([]);
+    expect(getChannelLevels().find((r) => r.channel === "sql")?.effective).toBe("trace");
   });
 });

@@ -296,6 +296,15 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       updated_at VARCHAR(255) DEFAULT CURRENT_TIMESTAMP
     )`,
 
+    // Log levels an administrator set through /api/admin/log-levels, kept across restarts and
+    // applied by every instance (see lib/logging/level-store.ts).
+    sql`CREATE TABLE IF NOT EXISTS log_level_overrides (
+      channel VARCHAR(64) PRIMARY KEY,
+      level VARCHAR(16) NOT NULL,
+      updated_by VARCHAR(255),
+      updated_at VARCHAR(255) DEFAULT CURRENT_TIMESTAMP
+    )`,
+
     sql`CREATE TABLE IF NOT EXISTS resource_permissions (
       id VARCHAR(255) PRIMARY KEY,
       resource_type VARCHAR(100) NOT NULL,
