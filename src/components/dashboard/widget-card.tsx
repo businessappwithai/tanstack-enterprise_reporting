@@ -193,7 +193,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
           />
         );
       } catch (error) {
-        getLogger("client").note("error", "Error rendering chart:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Error rendering chart", err: error });
         return (
           <div className="flex items-center justify-center h-full text-destructive text-sm">
             Error rendering chart
@@ -238,7 +238,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
           </div>
         );
       } catch (error) {
-        getLogger("client").note("error", "Error rendering report:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Error rendering report", err: error });
         return (
           <div className="flex items-center justify-center h-full text-destructive text-sm">
             Error rendering report

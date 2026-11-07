@@ -139,7 +139,7 @@ export const Route = createFileRoute("/api/voice/ws")({
               }
             }
           } catch (error) {
-            getLogger("client").note("error", "[WS] Message handling error:", { err: error });
+            getLogger("app").event("app.misc.failed", { what: "Message handling error", err: error });
             socket.send(
               JSON.stringify({
                 type: "error",

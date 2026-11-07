@@ -79,7 +79,7 @@ export function RecordEditor({
 
         onSave?.();
       } catch (error) {
-        getLogger("client").note("error", "Error saving record:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Error saving record", err: error });
         throw error;
       } finally {
         setIsSubmitting(false);

@@ -47,7 +47,7 @@ export function ErrorReportDialog({ open, onOpenChange, errorLog }: ErrorReportD
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      getLogger("client").note("error", "Failed to copy to clipboard:", { err: err });
+      getLogger("client").event("client.ui.failed", { what: "Failed to copy to clipboard", err: err });
     }
   };
 

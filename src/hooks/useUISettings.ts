@@ -20,7 +20,7 @@ export function useUISettings(): UISettings {
       try {
         setSettings(JSON.parse(saved));
       } catch (e) {
-        getLogger("client").note("error", "Failed to parse UI settings:", { err: e });
+        getLogger("client").event("client.ui.failed", { what: "Failed to parse UI settings", err: e });
         setSettings(DEFAULT_SETTINGS);
       }
     }
@@ -33,7 +33,7 @@ export function useUISettings(): UISettings {
         try {
           setSettings(JSON.parse(updated));
         } catch (e) {
-          getLogger("client").note("error", "Failed to parse updated UI settings:", { err: e });
+          getLogger("client").event("client.ui.failed", { what: "Failed to parse updated UI settings", err: e });
         }
       }
     };

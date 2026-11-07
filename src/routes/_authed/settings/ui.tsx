@@ -31,7 +31,7 @@ function UISettingsPage() {
       try {
         setSettings(JSON.parse(saved));
       } catch (e) {
-        getLogger("client").note("error", "Failed to parse UI settings:", { err: e });
+        getLogger("client").event("client.ui.failed", { what: "Failed to parse UI settings", err: e });
       }
     }
   }, []);
@@ -43,7 +43,7 @@ function UISettingsPage() {
       toast.success("UI Settings saved successfully");
     } catch (e) {
       toast.error("Failed to save UI settings");
-      getLogger("client").note("error", "error", { err: e });
+      getLogger("client").event("client.ui.failed", { what: "Error", err: e });
     } finally {
       setIsSaving(false);
     }

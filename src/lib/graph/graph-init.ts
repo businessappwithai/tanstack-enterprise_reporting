@@ -21,11 +21,11 @@ export async function initGraph(): Promise<void> {
   // create_graph() raises an error if the graph already exists; catch it
   try {
     await graphSql(`SELECT create_graph($1)`, [GRAPH_NAME]);
-    getLogger("graph").note("debug", `[graph] Created property graph: ${GRAPH_NAME}`);
+    getLogger("graph").event("graph.sync.trace", { what: `Created property graph: ${GRAPH_NAME}` });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (!msg.includes("already exists")) throw err;
   }
 
-  getLogger("graph").note("debug", `[graph] Knowledge graph ready: ${GRAPH_NAME}`);
+  getLogger("graph").event("graph.sync.trace", { what: `Knowledge graph ready: ${GRAPH_NAME}` });
 }

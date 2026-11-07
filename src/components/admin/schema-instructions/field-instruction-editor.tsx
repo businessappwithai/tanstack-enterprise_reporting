@@ -88,7 +88,7 @@ export function FieldInstructionEditor({
           }
         }
       } catch (err) {
-        getLogger("client").note("error", "Failed to fetch instructions:", { err: err });
+        getLogger("client").event("client.ui.failed", { what: "Failed to fetch instructions", err: err });
       }
     };
 

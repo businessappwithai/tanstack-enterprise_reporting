@@ -38,7 +38,7 @@ export class EmbeddingService {
 
       const embedding = response.data[0]?.embedding;
       if (!embedding || embedding.length === 0) {
-        getLogger("nlquery").note("warn", "[Embedding] No embedding returned from llama.cpp");
+        getLogger("nlquery").event("nlquery.openkb.degraded", { what: "No embedding returned from llama.cpp" });
         return [];
       }
 
@@ -51,7 +51,7 @@ export class EmbeddingService {
 
       return embedding;
     } catch (error) {
-      getLogger("nlquery").note("error", "[Embedding] Failed to generate embedding:", { err: error });
+      getLogger("nlquery").event("nlquery.openkb.failed", { what: "Failed to generate embedding", err: error });
       return [];
     }
   }

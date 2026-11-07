@@ -7,7 +7,6 @@ import {
   extractScatterData,
   extractSeries,
 } from "../DataAdapter";
-import { getLogger } from "@/lib/logging/logger";
 
 export function buildBar(config: EChartsConfig, rows: Record<string, unknown>[]): EChartsOption {
   const categories = extractCategories(rows, config.dataMapping);
@@ -35,19 +34,6 @@ export function buildBar(config: EChartsConfig, rows: Record<string, unknown>[])
     return baseSeries;
   });
 
-  getLogger("client").note("debug", "[buildBar] Input config.stacked:", { detail: [config.stacked] });
-  getLogger("client").note("debug", "[buildBar] Series colors:", { detail: [config.seriesColors] });
-  getLogger("client").note("debug", "[buildBar] Series:", { detail: [seriesWithStack.map((s) => ({
-      name: s.name,
-      hasStack: "stack" in s,
-      stackValue: s.stack,
-      dataLength: s.data?.length,
-      allKeys: Object.keys(s),
-      type: s.type,
-      hasColor: "itemStyle" in s,
-    }))] });
-  getLogger("client").note("debug", "[buildBar] First series object:", { detail: [JSON.stringify(seriesWithStack[0], null, 2)] });
-  getLogger("client").note("debug", "[buildBar] Second series object:", { detail: [JSON.stringify(seriesWithStack[1], null, 2)] });
 
   const result: EChartsOption = {
     xAxis: {
@@ -88,7 +74,6 @@ export function buildBar(config: EChartsConfig, rows: Record<string, unknown>[])
     },
   };
 
-  getLogger("client").note("debug", "[buildBar] Result:", { detail: [result] });
 
   return result;
 }

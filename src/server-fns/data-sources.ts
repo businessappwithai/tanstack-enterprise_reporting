@@ -86,7 +86,7 @@ export const getDataSource = createServerFn({ method: "GET" })
               .catch(console.error);
           }
         } catch (decryptError) {
-          getLogger("app").note("error", "Failed to decrypt connection config", { detail: [{ dataSourceId: id }, decryptError] });
+          getLogger("app").event("app.serverfn.failed", { what: "Failed to decrypt connection config", detail: [{ dataSourceId: id }, decryptError] });
           throw decryptError;
         }
 
@@ -371,7 +371,7 @@ export const inspectDataSource = createServerFn({ method: "POST" })
           return result;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to inspect schema";
-          getLogger("app").note("error", "[inspectDataSource] Error:", { detail: [message, { dataSourceId: id }] });
+          getLogger("app").event("app.serverfn.failed", { what: "Error", detail: [message, { dataSourceId: id }] });
           throw error;
         }
       },

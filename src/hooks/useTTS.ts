@@ -72,7 +72,7 @@ export function useTTS() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : "TTS error";
       setState({ isSpeaking: false, error: msg });
-      getLogger("voice").note("error", "[useTTS] Error:", { err: error });
+      getLogger("voice").event("voice.client.failed", { what: "Error", err: error });
     }
   }, []);
 

@@ -132,7 +132,7 @@ export async function executeNlQueryPipeline(
         details: { blocked: "not_read_only", source: "nl-query", sql: generatedSql.slice(0, 500) },
       });
     } catch (auditError) {
-      getLogger("nlquery").note("error", "[nl-query] Failed to audit-log a refused statement:", { err: auditError });
+      getLogger("nlquery").event("nlquery.pipeline.failed", { what: "Failed to audit-log a refused statement", err: auditError });
     }
     return {
       naturalLanguageQuery,
@@ -223,7 +223,7 @@ export async function executeNlQueryPipeline(
         },
       });
     } catch (auditError) {
-      getLogger("nlquery").note("error", "[nl-query] Failed to audit-log an execution:", { err: auditError });
+      getLogger("nlquery").event("nlquery.pipeline.failed", { what: "Failed to audit-log an execution", err: auditError });
     }
 
     const columns = resultRows.length > 0 ? Object.keys(resultRows[0]) : [];

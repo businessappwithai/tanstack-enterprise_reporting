@@ -175,7 +175,7 @@ export const executeNLQuery = createServerFn({
           nlQuestion,
           schemaContextStr
         );
-        getLogger("nlquery").note("debug", "[NLQuery] Built enhanced context from similar role queries");
+        getLogger("nlquery").event("nlquery.translate.trace", { what: "Built enhanced context from similar role queries" });
       }
 
       // Augment contextPrompt with knowledge-graph schema context (non-fatal if graph is down)
@@ -184,7 +184,7 @@ export const executeNLQuery = createServerFn({
         const graphSection = formatGraphContext(graphCtx);
         if (graphSection) {
           contextPrompt = contextPrompt ? `${contextPrompt}\n\n${graphSection}` : graphSection;
-          getLogger("nlquery").note("debug", `[NLQuery] Graph context: ${graphCtx.tables.length} table(s), ~${graphCtx.totalTokenEstimate} tokens`);
+          getLogger("nlquery").event("nlquery.translate.trace", { what: `Graph context: ${graphCtx.tables.length} table(s), ~${graphCtx.totalTokenEstimate} tokens` });
         }
       } catch {
         // graph unavailable — continue with pgvector context only
@@ -195,7 +195,7 @@ export const executeNLQuery = createServerFn({
       let translationSource = "";
 
       if (mastraAvailable) {
-        getLogger("nlquery").note("debug", "[NLQuery] Using Mastra.ai agent for translation");
+        getLogger("nlquery").event("nlquery.translate.trace", { what: "Using Mastra.ai agent for translation" });
         translationSource = "mastra-agent";
         translation = await translateViaMastra(
           nlQuestion,
@@ -212,7 +212,7 @@ export const executeNLQuery = createServerFn({
       }
 
       if (!translation && (await isLlamaReasoningAvailable())) {
-        getLogger("nlquery").note("debug", "[NLQuery] Mastra not available, using llama.cpp directly");
+        getLogger("nlquery").event("nlquery.translate.trace", { what: "Mastra not available, using llama.cpp directly" });
         translationSource = "llama-reasoning";
         /*
          * The user and data source are passed now.
@@ -397,9 +397,9 @@ export const executeNLQuery = createServerFn({
           llmConfidence: translation.confidence || 0.9,
         });
 
-        getLogger("nlquery").note("debug", "[NLQuery] Stored successful query context for role-based learning");
+        getLogger("nlquery").event("nlquery.translate.trace", { what: "Stored successful query context for role-based learning" });
       } catch (error) {
-        getLogger("nlquery").note("warn", "[NLQuery] Failed to store query context:", { err: error });
+        getLogger("nlquery").event("nlquery.translate.degraded", { what: "Failed to store query context", err: error });
         // Non-fatal error - continue even if context storage fails
       }
 
@@ -415,7 +415,7 @@ export const executeNLQuery = createServerFn({
           },
         });
       } catch (error) {
-        getLogger("nlquery").note("warn", "[NLQuery] Failed to log to OpenKB:", { err: error });
+        getLogger("nlquery").event("nlquery.translate.degraded", { what: "Failed to log to OpenKB", err: error });
         // Non-fatal error - continue even if OpenKB logging fails
       }
 

@@ -42,7 +42,7 @@ export async function cleanupExpiredReportArtifacts(): Promise<{
 
     if (expired.length === 0) return { deletedFiles: 0, deletedRecords: 0, errors: [] };
 
-    getLogger("report").note("debug", `[report-cleanup] Found ${expired.length} expired artifact(s) older than ${RETENTION_DAYS} days`);
+    getLogger("report").event("report.worker.trace", { what: `Found ${expired.length} expired artifact(s) older than ${RETENTION_DAYS} days` });
 
     // Delete files from disk
     const deletedDirs = new Set<string>();
@@ -86,10 +86,10 @@ export async function cleanupExpiredReportArtifacts(): Promise<{
       deletedRecords += batch.length;
     }
 
-    getLogger("report").note("debug", `[report-cleanup] Deleted ${deletedFiles} file(s), ${deletedRecords} record(s), ${errors.length} error(s)`);
+    getLogger("report").event("report.worker.trace", { what: `Deleted ${deletedFiles} file(s), ${deletedRecords} record(s), ${errors.length} error(s)` });
   } catch (err) {
     errors.push(`Cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
-    getLogger("report").note("error", "[report-cleanup]", { detail: [errors[errors.length - 1]] });
+    getLogger("report").event("report.worker.failed", { what: "", detail: [errors[errors.length - 1]] });
   }
 
   return { deletedFiles, deletedRecords, errors };

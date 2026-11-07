@@ -96,7 +96,7 @@ export function extractTablesFromSQL(sql: string): string[] {
 
     return Array.from(tables);
   } catch (error) {
-    getLogger("nlquery").note("error", "[SQLValidator] Failed to parse SQL with AST:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "Failed to parse SQL with AST", err: error });
     return [];
   }
 }
@@ -175,7 +175,7 @@ export async function validateSQLRBACAccess(
       }),
     };
   } catch (error) {
-    getLogger("nlquery").note("error", "[SQLValidator] RBAC validation error:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "RBAC validation error", err: error });
     return {
       isValid: false,
       accessAllowed: false,
@@ -202,7 +202,7 @@ export async function isTableAccessible(
     ]);
     return !!result?.hasAccess;
   } catch (error) {
-    getLogger("nlquery").note("error", "[SQLValidator] Table access check failed:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "Table access check failed", err: error });
     return false;
   }
 }

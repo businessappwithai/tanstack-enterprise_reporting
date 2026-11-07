@@ -50,7 +50,7 @@ export async function translateNLToSQLViaLlama(
   try {
     const available = await isLlamaReasoningAvailable();
     if (!available) {
-      getLogger("nlquery").note("warn", "[Llama] Reasoning server not available");
+      getLogger("nlquery").event("nlquery.translate.degraded", { what: "Reasoning server not available" });
       return null;
     }
 
@@ -82,7 +82,7 @@ export async function translateNLToSQLViaLlama(
       if (userId && dataSourceId) {
         const rbacValidation = await validateSQLRBACAccess(userId, dataSourceId, refinedSQL);
         if (!rbacValidation.accessAllowed) {
-          getLogger("nlquery").note("warn", "[Llama] RBAC validation failed for refined SQL:", { detail: [rbacValidation.error] });
+          getLogger("nlquery").event("nlquery.translate.degraded", { what: "RBAC validation failed for refined SQL", detail: [rbacValidation.error] });
           return {
             denied: rbacValidation.error ?? "Access denied",
             deniedTables: rbacValidation.deniedTables,
@@ -115,7 +115,7 @@ export async function translateNLToSQLViaLlama(
     if (userId && dataSourceId) {
       const rbacValidation = await validateSQLRBACAccess(userId, dataSourceId, initialSQL);
       if (!rbacValidation.accessAllowed) {
-        getLogger("nlquery").note("warn", "[Llama] RBAC validation failed:", { detail: [rbacValidation.error] });
+        getLogger("nlquery").event("nlquery.translate.degraded", { what: "RBAC validation failed", detail: [rbacValidation.error] });
         return {
           denied: rbacValidation.error ?? "Access denied",
           deniedTables: rbacValidation.deniedTables,
@@ -129,7 +129,7 @@ export async function translateNLToSQLViaLlama(
       warnings: warnings.length > 0 ? warnings : undefined,
     };
   } catch (error) {
-    getLogger("nlquery").note("error", "[Llama] Translation failed:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "Translation failed", err: error });
     return null;
   }
 }
@@ -185,7 +185,7 @@ Generate a SQL SELECT query that answers this question:`;
 
     // Check for inability to generate
     if (raw.includes("UNABLE_TO_GENERATE")) {
-      getLogger("nlquery").note("warn", "[Llama] Model indicated inability to generate SQL");
+      getLogger("nlquery").event("nlquery.translate.degraded", { what: "Model indicated inability to generate SQL" });
       return null;
     }
 
@@ -199,7 +199,7 @@ Generate a SQL SELECT query that answers this question:`;
     const sqlMatch = stripped.match(/(WITH\s+.+?SELECT.+|SELECT.+)/is);
     return sqlMatch ? sqlMatch[0].trim() : null;
   } catch (error) {
-    getLogger("nlquery").note("error", "[Llama] SQL generation failed:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "SQL generation failed", err: error });
     return null;
   }
 }
@@ -256,7 +256,7 @@ Generate a corrected SQL SELECT query (SELECT only, no mutations):`;
     const sqlMatch = raw.match(/(WITH\s+.+?SELECT.+|SELECT.+)/is);
     return sqlMatch ? sqlMatch[0].trim() : null;
   } catch (error) {
-    getLogger("nlquery").note("error", "[Llama] SQL refinement failed:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "SQL refinement failed", err: error });
     return null;
   }
 }

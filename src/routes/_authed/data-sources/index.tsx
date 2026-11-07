@@ -372,7 +372,7 @@ function DataSourcesContent() {
     onError: (error) => {
       const message = error instanceof Error ? error.message : "Failed to inspect schema";
       toast.error(message);
-      getLogger("client").note("error", "Inspect error:", { detail: [message] });
+      getLogger("client").event("client.ui.failed", { what: "Inspect error", detail: [message] });
       setInspectingDs(null);
     },
   });

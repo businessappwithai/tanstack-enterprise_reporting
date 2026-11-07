@@ -32,7 +32,6 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
 
   try {
     // === STAGE 1: Generate Report Attachment ===
-    getLogger("jobs").note("info", "[email-batch]", { detail: ["Generating report attachment..."] });
 
     const db = getDb();
 
@@ -79,7 +78,6 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
       reportRows = reportResult.rows;
     }
 
-    getLogger("jobs").note("info", "[email-batch]", { detail: [`Generated ${reportRows.length} rows for report`] });
 
     // Ensure output directory exists
     await fs.mkdir(JOB_OUTPUT_DIR, { recursive: true });
@@ -103,10 +101,8 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
         throw new Error(`Unsupported format: ${format}`);
     }
 
-    getLogger("jobs").note("info", "[email-batch]", { detail: [`Report attachment created: ${filename}`] });
 
     // === STAGE 2: Fetch Email Template ===
-    getLogger("jobs").note("info", "[email-batch]", { detail: ["Fetching email template..."] });
 
     const template = await db
       .selectFrom("email_templates")
@@ -122,7 +118,6 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
     const columnMappings = template.column_mappings ? JSON.parse(template.column_mappings) : {};
 
     // === STAGE 3: Fetch Recipients ===
-    getLogger("jobs").note("info", "[email-batch]", { detail: ["Fetching recipient list..."] });
 
     const recipientQuery = await db
       .selectFrom("saved_queries")
@@ -166,11 +161,9 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
     }
 
     if (recipientRows.length === 0) {
-      getLogger("jobs").note("info", "[email-batch]", { detail: ["WARNING: No recipients found"] });
       throw new Error("No recipients found from recipient query");
     }
 
-    getLogger("jobs").note("info", "[email-batch]", { detail: [`Found ${recipientRows.length} recipients`] });
 
     // Validate email column exists
     if (!recipientRows[0][recipientEmailColumn]) {
@@ -180,7 +173,7 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
     }
 
     // === STAGE 4: Send Batch Emails ===
-    getLogger("jobs").note("info", "[email-batch]", { detail: ["Starting batch email send..."] });
+    getLogger("jobs").event("jobs.email_batch.started", { total: recipientRows.length });
 
     const failedRecipients: Array<{ email: string; error: string }> = [];
 
@@ -188,7 +181,6 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
       const recipient = recipientRows[i];
       const recipientEmail = String(recipient[recipientEmailColumn]);
 
-      getLogger("jobs").note("info", "[email-batch]", { detail: [`Sending email ${i + 1}/${recipientRows.length} to ${recipientEmail}`] });
 
       try {
         // Apply column mappings to get variables for template
@@ -222,15 +214,14 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
 
         if (result.success) {
           emailsSent++;
-          getLogger("jobs").note("info", "[email-batch]", { detail: [`✓ Email sent to ${recipientEmail} (Message ID: ${result.messageId})`] });
         } else {
           failedRecipients.push({ email: recipientEmail, error: result.error || "Unknown error" });
-          getLogger("jobs").note("info", "[email-batch]", { detail: [`✗ Failed to send to ${recipientEmail}: ${result.error}`] });
+          getLogger("jobs").event("jobs.email_batch.recipient_failed", { position: i + 1, reason: result.error || "Unknown error" });
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error";
         failedRecipients.push({ email: recipientEmail, error: errorMsg });
-        getLogger("jobs").note("info", "[email-batch]", { detail: [`✗ Error sending to ${recipientEmail}: ${errorMsg}`] });
+        getLogger("jobs").event("jobs.email_batch.recipient_failed", { position: i + 1, reason: errorMsg });
       }
     }
 
@@ -249,9 +240,11 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
       },
     });
 
-    if (failedRecipients.length > 0) {
-      getLogger("jobs").note("info", "[email-batch]", { detail: [`Batch completed with ${failedRecipients.length} failures: ${JSON.stringify(failedRecipients)}`] });
-    }
+    getLogger("jobs").event("jobs.email_batch.completed", {
+      total: recipientRows.length,
+      sent: emailsSent,
+      failed: failedRecipients.length,
+    });
 
     return {
       success: true,

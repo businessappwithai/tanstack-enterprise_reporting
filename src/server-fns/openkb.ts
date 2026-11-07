@@ -71,7 +71,7 @@ export const logQueryToOpenKB = createServerFn({
 
       return { queryId };
     } catch (error) {
-      getLogger("nlquery").note("error", "[OpenKB] Failed to log query:", { err: error });
+      getLogger("nlquery").event("nlquery.openkb.failed", { what: "Failed to log query", err: error });
       throw new Error("Failed to save query to knowledge base");
     }
   });
@@ -115,7 +115,7 @@ export const suggestFromOpenKB = createServerFn({
         })),
       };
     } catch (error) {
-      getLogger("nlquery").note("error", "[OpenKB] Failed to get suggestions:", { err: error });
+      getLogger("nlquery").event("nlquery.openkb.failed", { what: "Failed to get suggestions", err: error });
       return { suggestions: [] }; // Gracefully return empty suggestions
     }
   });
@@ -153,7 +153,7 @@ export const getRecentQueriesFromOpenKB = createServerFn({
           resultRowCount: q.resultRowCount,
         }));
       } catch (error) {
-        getLogger("nlquery").note("error", "[OpenKB] Failed to get recent queries:", { err: error });
+        getLogger("nlquery").event("nlquery.openkb.failed", { what: "Failed to get recent queries", err: error });
         return [];
       }
     }
@@ -184,7 +184,7 @@ export const getOpenKBStats = createServerFn({
         newestQuery: stats.newestQuery ? new Date(stats.newestQuery) : undefined,
       };
     } catch (error) {
-      getLogger("nlquery").note("error", "[OpenKB] Failed to get stats:", { err: error });
+      getLogger("nlquery").event("nlquery.openkb.failed", { what: "Failed to get stats", err: error });
       return { queryCount: 0 };
     }
   }

@@ -97,14 +97,14 @@ export async function translateNLToSQLViaMastra(
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      getLogger("nlquery").note("error", `[Mastra] Translation failed with status ${response.status}`);
+      getLogger("nlquery").event("nlquery.translate.failed", { what: `Translation failed with status ${response.status}` });
       return null;
     }
 
     const data = (await response.json()) as MastraAgentResponse;
     return data;
   } catch (error) {
-    getLogger("nlquery").note("error", "[Mastra] Connection error:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "Connection error", err: error });
     return null;
   }
 }
@@ -137,7 +137,7 @@ export async function validateSQLViaMastra(
     const data = (await response.json()) as { isValid: boolean; errors?: string[] };
     return { ...data, errors: data.errors || [] };
   } catch (error) {
-    getLogger("nlquery").note("error", "[Mastra] Validation error:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "Validation error", err: error });
     return { isValid: false, errors: ["Validation service unavailable"] };
   }
 }

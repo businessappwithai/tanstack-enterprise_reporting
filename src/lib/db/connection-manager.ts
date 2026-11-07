@@ -82,7 +82,6 @@ async function buildKyselyConnection(
     }
 
     case "pg": {
-      getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Building PostgreSQL connection...`);
 
       // Build pool config with battle-tested SSL/TLS settings for Neon and other external databases
       const poolConfig: any = {
@@ -97,11 +96,9 @@ async function buildKyselyConnection(
         keepalives_idle: 5, // Send TCP keepalive every 5 seconds to prevent idle disconnection
       };
 
-      getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Pool config: max=${poolConfig.max}, connectionTimeout=${poolConfig.connectionTimeoutMillis}ms`);
 
       // Use connection string if provided (Neon uses this)
       if (connectionConfig.connectionString) {
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Using connection string mode`);
         const connStr = connectionConfig.connectionString;
 
         // Parse the connection string to extract individual components.
@@ -121,16 +118,13 @@ async function buildKyselyConnection(
         const user = decodeURIComponent(parsedUrl.username);
         const password = decodeURIComponent(parsedUrl.password);
 
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Parsed: host=${hostname}, port=${port}, db=${database}, user=${user}`);
 
         // Resolve to IPv4 to avoid Docker/IPv6 routing failures on external hosts (e.g. Neon)
         const ipv4 = await resolveIPv4(hostname);
         if (ipv4) {
           poolConfig.host = ipv4;
-          getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Resolved ${hostname} → IPv4 ${ipv4}`);
         } else {
           poolConfig.host = hostname;
-          getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] IPv4 resolution failed, using hostname directly`);
         }
 
         poolConfig.port = port;
@@ -141,25 +135,21 @@ async function buildKyselyConnection(
         // Skip SSL for local connections; enable for external hosts (e.g. Neon)
         const isLocal = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
         if (isLocal) {
-          getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] SSL disabled (local host)`);
         } else {
           poolConfig.ssl = {
             rejectUnauthorized: false,
             minVersion: "TLSv1.2",
             servername: hostname,
           };
-          getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] SSL config: rejectUnauthorized=false, servername=${hostname}`);
         }
       } else {
         // Otherwise build from individual components
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Using individual field mode`);
         poolConfig.host = connectionConfig.host;
         poolConfig.port = connectionConfig.port || 5432;
         poolConfig.database = connectionConfig.database;
         poolConfig.user = connectionConfig.user;
         poolConfig.password = connectionConfig.password;
 
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Connection details: host=${poolConfig.host}:${poolConfig.port}, db=${poolConfig.database}, user=${poolConfig.user}`);
 
         // Apply SSL for individual component connections only if explicitly requested
         if (connectionConfig.ssl === true) {
@@ -167,16 +157,12 @@ async function buildKyselyConnection(
             rejectUnauthorized: false,
             minVersion: "TLSv1.2",
           };
-          getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] SSL enabled`);
         } else {
-          getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] SSL disabled (default for local connections)`);
         }
       }
 
       try {
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Creating pg Pool...`);
         const pool = new Pool(poolConfig);
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] pg Pool created successfully`);
 
         // Add error event handler to log pool errors without crashing
         pool.on("error", (err: Error) => {
@@ -185,16 +171,13 @@ async function buildKyselyConnection(
 
         // Log when clients fail
         pool.on("connect", () => {
-          getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Pool: new client connected`);
         });
 
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Creating Kysely instance with PostgreSQL dialect...`);
         const kysely = new Kysely({ dialect: new PostgresDialect({ pool }) });
-        getLogger("datasource").note("debug", `[BUILD_CONN:${buildId}] Kysely instance created successfully`);
 
         return kysely;
       } catch (error) {
-        getLogger("datasource").note("error", `[BUILD_CONN:${buildId}] Failed to create connection: ${error instanceof Error ? error.message : String(error)}`);
+        getLogger("datasource").event("datasource.connection.failed", { what: `Failed to create connection: ${error instanceof Error ? error.message : String(error)}` });
         throw error;
       }
     }
@@ -251,11 +234,11 @@ export async function getConnection(dataSource: DataSource): Promise<AnyKysely> 
     } catch (error) {
       // Log the connection error for debugging
       const errorMsg = error instanceof Error ? error.message : String(error);
-      getLogger("datasource").note("warn", `[CONNECTION MANAGER] Cached connection failed for ${poolKey}: ${errorMsg}. Recreating...`);
+      getLogger("datasource").event("datasource.connection.degraded", { what: `Cached connection failed for ${poolKey}: ${errorMsg}. Recreating...` });
       try {
         await connectionPool[poolKey].destroy();
       } catch (destroyError) {
-        getLogger("datasource").note("warn", `[CONNECTION MANAGER] Error destroying failed connection: ${destroyError}`);
+        getLogger("datasource").event("datasource.connection.degraded", { what: `Error destroying failed connection: ${destroyError}` });
       }
       delete connectionPool[poolKey];
     }
@@ -277,7 +260,7 @@ export async function getConnection(dataSource: DataSource): Promise<AnyKysely> 
       needsEncryption = true;
     }
   } catch (error) {
-    getLogger("datasource").note("error", "[CONNECTION MANAGER] Failed to parse connection config:", { err: error });
+    getLogger("datasource").event("datasource.connection.failed", { what: "Failed to parse connection config", err: error });
     throw error;
   }
 
@@ -291,10 +274,10 @@ export async function getConnection(dataSource: DataSource): Promise<AnyKysely> 
         .where("id", "=", dataSource.id)
         .execute()
         .catch((err) =>
-          getLogger("datasource").note("error", "[CONNECTION MANAGER] Failed to save re-encrypted config:", { err: err })
+          getLogger("datasource").event("datasource.connection.failed", { what: "Failed to save re-encrypted config", err: err })
         );
     } catch (error) {
-      getLogger("datasource").note("error", "[CONNECTION MANAGER] Failed to re-encrypt config:", { err: error });
+      getLogger("datasource").event("datasource.connection.failed", { what: "Failed to re-encrypt config", err: error });
     }
   }
 
@@ -315,31 +298,21 @@ export async function testConnection(
   const testId = Math.random().toString(36).substring(7);
 
   // Log test initiation with connection details
-  getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] START - Client: ${clientType}`);
   if (connectionConfig.connectionString) {
     const connStrMask = connectionConfig.connectionString.replace(/:[^@]+@/, `:***@`);
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Connection String: ${connStrMask}`);
   } else {
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Host: ${connectionConfig.host}:${connectionConfig.port || "default"}`);
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Database: ${connectionConfig.database}`);
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] User: ${connectionConfig.user}`);
   }
 
   try {
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Building connection pool...`);
     connection = await buildKyselyConnection(clientType, connectionConfig);
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Connection pool built successfully`);
 
     // Test basic connectivity
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Testing basic connectivity with SELECT 1...`);
     const connectTime = Date.now() - startTime;
     await sql`SELECT 1`.execute(connection);
     const queryTime = Date.now() - startTime - connectTime;
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Basic connectivity OK (connect: ${connectTime}ms, query: ${queryTime}ms)`);
 
     // For PostgreSQL, also verify schema access (what inspect needs)
     if (clientType === "pg") {
-      getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Testing schema access (information_schema)...`);
       try {
         const schemaStartTime = Date.now();
         await sql`
@@ -349,10 +322,8 @@ export async function testConnection(
           LIMIT 1
         `.execute(connection);
         const schemaDuration = Date.now() - schemaStartTime;
-        getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Schema access OK (${schemaDuration}ms)`);
       } catch (schemaError) {
         const schemaMsg = schemaError instanceof Error ? schemaError.message : String(schemaError);
-        getLogger("datasource").note("error", `[TEST_CONNECTION:${testId}] Schema access FAILED: ${schemaMsg}`);
         throw new Error(
           `Schema access failed: ${schemaMsg}. ` +
             `The user may not have permissions to query information_schema.`
@@ -361,7 +332,6 @@ export async function testConnection(
     }
 
     const latency = Date.now() - startTime;
-    getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] SUCCESS - Total latency: ${latency}ms`);
 
     if (clientType === "sqlite3") {
       return {
@@ -392,22 +362,13 @@ export async function testConnection(
       errorStack = (error as any).stack || "";
     }
 
-    // Log detailed error information for admin diagnostics
-    getLogger("datasource").note("error", `[TEST_CONNECTION:${testId}] FAILED after ${errorDuration}ms`);
-    getLogger("datasource").note("error", `[TEST_CONNECTION:${testId}] Error Code: ${errorCode || "N/A"}`);
-    getLogger("datasource").note("error", `[TEST_CONNECTION:${testId}] Error Message: ${message}`);
-    if (errorStack) {
-      getLogger("datasource").note("error", `[TEST_CONNECTION:${testId}] Stack Trace:\n${errorStack}`);
-    }
-    getLogger("datasource").note("error", `[TEST_CONNECTION:${testId}] Config Summary: ${JSON.stringify({
-        clientType,
-        host: connectionConfig.host,
-        port: connectionConfig.port,
-        database: connectionConfig.database,
-        hasConnectionString: !!connectionConfig.connectionString,
-        connectionStringHost:
-          connectionConfig.connectionString?.split("@")[1]?.split(":")[0] || "N/A",
-      })}`);
+    // One event, with the cause: the code, how long it took, and the stack. The configuration
+    // is not logged: it holds the host and user, and a connection string is a credential.
+    getLogger("datasource").event("datasource.test.failed", {
+      errorCode: errorCode || "UNKNOWN",
+      durationMs: errorDuration,
+      err: error,
+    });
 
     // Provide helpful error messages
     let friendlyMessage = message || "Unknown error";
@@ -433,8 +394,6 @@ export async function testConnection(
       friendlyMessage = message; // Already formatted
     }
 
-    getLogger("datasource").note("error", `[TEST_CONNECTION:${testId}] User-facing message: ${friendlyMessage}`);
-
     return {
       success: false,
       message: friendlyMessage,
@@ -444,7 +403,6 @@ export async function testConnection(
       const destroyStart = Date.now();
       await connection.destroy();
       const destroyDuration = Date.now() - destroyStart;
-      getLogger("datasource").note("debug", `[TEST_CONNECTION:${testId}] Connection destroyed (${destroyDuration}ms)`);
     }
   }
 }

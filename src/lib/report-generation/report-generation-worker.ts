@@ -614,7 +614,7 @@ export async function executeReportGeneration(params: {
     };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
-    getLogger("report").note("error", "[report-generation-worker] Failed:", { detail: [errMsg] });
+    getLogger("report").event("report.worker.failed", { what: "Failed", detail: [errMsg] });
 
     if (definition) {
       await (db as any)

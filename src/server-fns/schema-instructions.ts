@@ -174,7 +174,7 @@ export const saveFieldInstruction = createServerFn({
 
       return { success: true, data: input };
     } catch (error) {
-      getLogger("app").note("error", "[Schema Instructions] Save failed:", { err: error });
+      getLogger("app").event("app.serverfn.failed", { what: "Save failed", err: error });
       return { success: false, error: error instanceof Error ? error.message : "Failed to save" };
     }
   });
@@ -248,7 +248,7 @@ export const saveTableInstruction = createServerFn({
 
       return { success: true, data: input };
     } catch (error) {
-      getLogger("app").note("error", "[Schema Instructions] Save failed:", { err: error });
+      getLogger("app").event("app.serverfn.failed", { what: "Save failed", err: error });
       return { success: false, error: error instanceof Error ? error.message : "Failed to save" };
     }
   });

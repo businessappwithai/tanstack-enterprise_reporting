@@ -22,12 +22,12 @@ const SECURITY_HEADERS: Record<string, string> = {
 const handler = createStartHandler(defaultStreamHandler);
 
 // Start background workers (Trigger.dev or on-premise cron runner)
-initializeWorkers().catch((err) => getLogger("app").note("error", "[server] Worker init failed (non-fatal):", { err: err }));
+initializeWorkers().catch((err) => getLogger("app").event("app.startup.failed", { what: "Worker init failed (non-fatal)", err: err }));
 
 // Bootstrap Apache AGE knowledge graph, then sync schema + config metadata
 initGraph()
   .then(() => syncKnowledgeGraph())
-  .catch((err) => getLogger("app").note("warn", "[server] Knowledge graph init failed (non-fatal):", { err: err }));
+  .catch((err) => getLogger("app").event("app.startup.degraded", { what: "Knowledge graph init failed (non-fatal)", err: err }));
 
 const fetch: RequestHandler<Register> = async (request, opts) => {
   await waitForDatabaseReady();
@@ -48,7 +48,6 @@ const fetch: RequestHandler<Register> = async (request, opts) => {
 // Graceful shutdown for proper database cleanup
 if (typeof process !== "undefined" && process.versions?.node) {
   const shutdown = async () => {
-    getLogger("app").note("debug", "[server] Closing database connections...");
     await shutdownWorkers();
     await closeDb();
     process.exit(0);

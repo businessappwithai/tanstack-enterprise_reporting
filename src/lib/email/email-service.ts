@@ -264,7 +264,7 @@ export async function sendEmail(
       messageId: info.messageId,
     };
   } catch (error) {
-    getLogger("email").note("error", "Error sending email:", { err: error });
+    getLogger("email").event("email.send.failed", { what: "Error sending email", err: error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

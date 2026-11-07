@@ -57,7 +57,7 @@ async function syncSchemaForDataSource(
   try {
     schemaInfo = await introspectSchema(connection, clientType);
   } catch (err) {
-    getLogger("graph").note("warn", `[graph-sync] Schema introspection failed for ${ds.id}:`, { detail: [err instanceof Error ? err.message : err] });
+    getLogger("graph").event("graph.sync.degraded", { what: `Schema introspection failed for ${ds.id}`, detail: [err instanceof Error ? err.message : err] });
     return;
   }
 
@@ -221,7 +221,7 @@ async function syncDashboards(): Promise<void> {
 // --------------------------------------------------------------------------
 
 export async function syncKnowledgeGraph(): Promise<void> {
-  getLogger("graph").note("debug", "[graph-sync] Starting knowledge graph sync…");
+  getLogger("graph").event("graph.sync.trace", { what: "Starting knowledge graph sync…" });
   const db = getDb();
 
   const dataSources = await db
@@ -240,5 +240,5 @@ export async function syncKnowledgeGraph(): Promise<void> {
   await syncCharts();
   await syncDashboards();
 
-  getLogger("graph").note("debug", `[graph-sync] Done — synced ${dataSources.length} data source(s).`);
+  getLogger("graph").event("graph.sync.trace", { what: `Done — synced ${dataSources.length} data source(s).` });
 }

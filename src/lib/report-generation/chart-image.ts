@@ -74,7 +74,7 @@ export async function renderChartPng(
 
     return pngBuffer;
   } catch (err) {
-    getLogger("report").note("warn", "[report-worker] Chart rendering failed, reports will be generated without charts:", { err: err });
+    getLogger("report").event("report.worker.degraded", { what: "Chart rendering failed, reports will be generated without charts", err: err });
     return null;
   }
 }

@@ -35,7 +35,7 @@ export async function translateNLToSQL(
   schema: SchemaMetadata
 ): Promise<{ sql: string; explanation: string; warnings?: string[] } | null> {
   if (!process.env.OPENAI_API_KEY) {
-    getLogger("nlquery").note("warn", "[NL→SQL] OPENAI_API_KEY not set, cannot translate");
+    getLogger("nlquery").event("nlquery.translate.degraded", { what: "OPENAI_API_KEY not set, cannot translate" });
     return null;
   }
 
@@ -75,7 +75,7 @@ If the question cannot be answered with the available schema, explain why.`,
       warnings: result.object.warnings,
     };
   } catch (error) {
-    getLogger("nlquery").note("error", "[NL→SQL] OpenAI translation failed:", { err: error });
+    getLogger("nlquery").event("nlquery.translate.failed", { what: "OpenAI translation failed", err: error });
     return null;
   }
 }

@@ -65,7 +65,6 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { ReportColorTheme } from "@/types/database";
-import { getLogger } from "@/lib/logging/logger";
 
 interface DataTableProps<TData> {
   data: TData[];
@@ -199,7 +198,6 @@ export function DataTable<TData>({
             <Search
               className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground"
               onClick={() => {
-                getLogger("client").note("debug", "[DataTable] Search icon clicked, searching for:", { detail: [globalFilter] });
                 onSearchChange?.(globalFilter);
               }}
             />
@@ -207,12 +205,10 @@ export function DataTable<TData>({
               placeholder="Search all columns..."
               value={globalFilter}
               onChange={(e) => {
-                getLogger("client").note("debug", "[DataTable] Input changed:", { detail: [e.target.value] });
                 setGlobalFilter(e.target.value);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  getLogger("client").note("debug", "[DataTable] Enter pressed, searching for:", { detail: [globalFilter] });
                   onSearchChange?.(globalFilter);
                 }
               }}
@@ -222,7 +218,6 @@ export function DataTable<TData>({
               <X
                 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground"
                 onClick={() => {
-                  getLogger("client").note("debug", "[DataTable] Clear search");
                   setGlobalFilter("");
                   onSearchChange?.("");
                 }}
@@ -234,7 +229,6 @@ export function DataTable<TData>({
             size="sm"
             className="h-8"
             onClick={() => {
-              getLogger("client").note("debug", "[DataTable] Search button clicked, searching for:", { detail: [globalFilter] });
               onSearchChange?.(globalFilter);
             }}
           >
@@ -247,7 +241,6 @@ export function DataTable<TData>({
               size="sm"
               className="h-8"
               onClick={() => {
-                getLogger("client").note("debug", "[DataTable] Clear button clicked");
                 setGlobalFilter("");
                 onSearchChange?.("");
               }}

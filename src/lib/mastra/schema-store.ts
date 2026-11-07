@@ -33,7 +33,7 @@ export async function introspectAndCacheSchema(dataSource: DataSource): Promise<
       const rows = await connection.selectFrom(table.name).selectAll().limit(5).execute();
       sampleData[table.name] = rows;
     } catch (error) {
-      getLogger("nlquery").note("warn", `Failed to fetch sample data for table ${table.name}:`, { err: error });
+      getLogger("nlquery").event("nlquery.pipeline.degraded", { what: `Failed to fetch sample data for table ${table.name}`, err: error });
       sampleData[table.name] = [];
     }
   }

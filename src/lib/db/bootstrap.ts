@@ -40,15 +40,30 @@ function resolveBootstrapPassword(envVar: string, label: string): string {
   if (configured && configured.length >= 8) return configured;
 
   if (configured) {
-    getLogger("db").note("warn", `[bootstrap] ${envVar} is shorter than 8 characters and was ignored. ` +
-        "Generating a random password instead.");
+    getLogger("db").event("db.bootstrap.password_ignored", {
+      variable: envVar,
+      reason: "shorter than 8 characters",
+    });
   }
 
   const generated = randomBytes(18).toString("base64url");
-  getLogger("db").note("warn", `\n[bootstrap] No ${envVar} set. Generated a random password for ${label}:\n\n` +
-      `    ${generated}\n\n` +
+  getLogger("db").event("db.bootstrap.password_generated", { label });
+  // The one place a credential is printed, on purpose: the person who ran the platform has no
+  // other way to learn it. It goes to stderr and not through the structured log, so it is never
+  // an event a collector indexes or the System Logs table stores.
+  process.stderr.write(
+    `
+[bootstrap] No ${envVar} set. Generated a random password for ${label}:
+
+` +
+      `    ${generated}
+
+` +
       "This is printed once and is not recoverable. Sign in and change it, or set " +
-      `${envVar} before first boot.\n`);
+      `${envVar} before first boot.
+
+`
+  );
   return generated;
 }
 
@@ -66,7 +81,7 @@ async function bcryptHash(password: string): Promise<string> {
 }
 
 export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
-  getLogger("db").note("debug", "[bootstrap] Starting database schema bootstrap...");
+  getLogger("db").event("db.bootstrap.trace", { what: "Starting database schema bootstrap..." });
 
   const tables = [
     sql`CREATE TABLE IF NOT EXISTS users (
@@ -739,12 +754,12 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     sql`CREATE INDEX IF NOT EXISTS idx_auth_verifications_identifier ON auth_verifications (identifier)`,
   ];
 
-  getLogger("db").note("debug", "[bootstrap] Creating tables...");
+  getLogger("db").event("db.bootstrap.trace", { what: "Creating tables..." });
   for (const table of tables) {
     try {
       await table.execute(db);
     } catch (err) {
-      getLogger("db").note("warn", "[bootstrap] table create warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+      getLogger("db").event("db.bootstrap.degraded", { what: "Table create warning", detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
@@ -752,16 +767,16 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     try {
       await alter.execute(db);
     } catch (err) {
-      getLogger("db").note("warn", "[bootstrap] alter warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+      getLogger("db").event("db.bootstrap.degraded", { what: "Alter warning", detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
-  getLogger("db").note("debug", "[bootstrap] Creating indexes...");
+  getLogger("db").event("db.bootstrap.trace", { what: "Creating indexes..." });
   for (const idx of indexes) {
     try {
       await idx.execute(db);
     } catch (err) {
-      getLogger("db").note("warn", "[bootstrap] index create warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+      getLogger("db").event("db.bootstrap.degraded", { what: "Index create warning", detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
@@ -784,7 +799,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       ON ds_entity_permissions (data_source_id, ds_role_id, entity_name, entity_schema)
       NULLS NOT DISTINCT`.execute(db);
   } catch (err) {
-    getLogger("db").note("warn", "[bootstrap] ds_entity_permissions unique index warning:", { detail: [(err as Error).message?.slice(0, 160)] });
+    getLogger("db").event("db.bootstrap.degraded", { what: "Ds_entity_permissions unique index warning", detail: [(err as Error).message?.slice(0, 160)] });
   }
 
   /*
@@ -806,12 +821,12 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     try {
       await stmt.execute(db);
     } catch (err) {
-      getLogger("db").note("warn", "[bootstrap] email_templates column warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+      getLogger("db").event("db.bootstrap.degraded", { what: "Email_templates column warning", detail: [(err as Error).message?.slice(0, 120)] });
     }
   }
 
   // Seed admin user and role
-  getLogger("db").note("debug", "[bootstrap] Seeding admin user...");
+  getLogger("db").event("db.bootstrap.trace", { what: "Seeding admin user..." });
   const adminRoleId = "admin-role-id";
   const ADMIN_PERMISSIONS = JSON.stringify([
     "*:*",
@@ -849,7 +864,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     .onConflict((oc) => oc.column("id").doUpdateSet({ permissions: ADMIN_PERMISSIONS }))
     .execute()
     .catch((err) => {
-      getLogger("db").note("warn", "[bootstrap] admin role upsert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+      getLogger("db").event("db.bootstrap.degraded", { what: "Admin role upsert warning", detail: [(err as Error).message?.slice(0, 120)] });
     });
 
   const userCount = await db
@@ -874,7 +889,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       })
       .execute()
       .catch((err) => {
-        getLogger("db").note("warn", "[bootstrap] admin user insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+        getLogger("db").event("db.bootstrap.degraded", { what: "Admin user insert warning", detail: [(err as Error).message?.slice(0, 120)] });
       });
 
     await db
@@ -882,10 +897,10 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       .values({ user_id: ADMIN_ID, role_id: adminRoleId, assigned_at: now })
       .execute()
       .catch((err) => {
-        getLogger("db").note("warn", "[bootstrap] admin user_roles insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+        getLogger("db").event("db.bootstrap.degraded", { what: "Admin user_roles insert warning", detail: [(err as Error).message?.slice(0, 120)] });
       });
 
-    getLogger("db").note("debug", "[bootstrap] Admin created: admin@admin.com");
+    getLogger("db").event("db.bootstrap.trace", { what: "Admin created: admin@admin.com" });
   }
 
   const nlQueryPermissions = JSON.stringify(["nl_query:*"]);
@@ -903,7 +918,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     .onConflict((oc) => oc.column("id").doUpdateSet({ permissions: nlQueryPermissions }))
     .execute()
     .catch((err) => {
-      getLogger("db").note("warn", "[bootstrap] nlquery role insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+      getLogger("db").event("db.bootstrap.degraded", { what: "Nlquery role insert warning", detail: [(err as Error).message?.slice(0, 120)] });
     });
 
   /*
@@ -940,7 +955,7 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       .onConflict((oc) => oc.column("id").doNothing())
       .execute()
       .catch((err) => {
-        getLogger("db").note("warn", "[bootstrap] nlquery user insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+        getLogger("db").event("db.bootstrap.degraded", { what: "Nlquery user insert warning", detail: [(err as Error).message?.slice(0, 120)] });
       });
   }
 
@@ -950,10 +965,10 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
     .onConflict((oc) => oc.columns(["user_id", "role_id"]).doNothing())
     .execute()
     .catch((err) => {
-      getLogger("db").note("warn", "[bootstrap] nlquery user_roles insert warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+      getLogger("db").event("db.bootstrap.degraded", { what: "Nlquery user_roles insert warning", detail: [(err as Error).message?.slice(0, 120)] });
     });
 
-  getLogger("db").note("debug", "[bootstrap] NL Query user ensured: nlquery@nlquery.com");
+  getLogger("db").event("db.bootstrap.trace", { what: "NL Query user ensured: nlquery@nlquery.com" });
 
   // ── Credentials into Better Auth ──────────────────────────────────────────
   //
@@ -1002,16 +1017,16 @@ export async function bootstrapSchema(db: Kysely<Database>): Promise<void> {
       .onConflict((oc) => oc.column("id").doNothing())
       .execute()
       .catch((err) => {
-        getLogger("db").note("warn", "[bootstrap] credential migration warning:", { detail: [(err as Error).message?.slice(0, 120)] });
+        getLogger("db").event("db.bootstrap.degraded", { what: "Credential migration warning", detail: [(err as Error).message?.slice(0, 120)] });
       });
   }
 
   if (usersNeedingCredential.length > 0) {
-    getLogger("db").note("debug", `[bootstrap] Migrated ${usersNeedingCredential.length} credential(s) into Better Auth`);
+    getLogger("db").event("db.bootstrap.trace", { what: `Migrated ${usersNeedingCredential.length} credential(s) into Better Auth` });
   }
 
-  getLogger("db").note("debug", "[bootstrap] Seeding help articles...");
+  getLogger("db").event("db.bootstrap.trace", { what: "Seeding help articles..." });
   await seedHelpArticles(db);
 
-  getLogger("db").note("debug", "[bootstrap] Database bootstrap complete!");
+  getLogger("db").event("db.bootstrap.trace", { what: "Database bootstrap complete!" });
 }

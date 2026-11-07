@@ -140,7 +140,7 @@ function PermissionsManagementPage() {
         const items = data?.data?.items || data?.data || data?.items || data;
         return Array.isArray(items) ? items : [];
       } catch (error) {
-        getLogger("client").note("error", "Failed to fetch resources:", { err: error });
+        getLogger("client").event("client.ui.failed", { what: "Failed to fetch resources", err: error });
         return [];
       }
     },

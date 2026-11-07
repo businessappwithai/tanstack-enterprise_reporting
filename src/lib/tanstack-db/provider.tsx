@@ -38,12 +38,11 @@ export function TanStackDBWrapper({ children }: { children: React.ReactNode }) {
         if (collection.preload && typeof collection.preload === "function") {
           // Wrap in try-catch to prevent sync errors from blocking UI
           Promise.resolve(collection.preload()).catch((error) => {
-            getLogger("client").note("warn", `Preload failed for collection, continuing with local state:`, { err: error });
+            getLogger("client").event("client.ui.degraded", { what: `Preload failed for collection, continuing with local state`, err: error });
           });
         }
       } catch (error) {
         // Silently continue - local state will work fine
-        getLogger("client").note("debug", "Collection preload skipped:", { err: error });
       }
     });
   }, []);

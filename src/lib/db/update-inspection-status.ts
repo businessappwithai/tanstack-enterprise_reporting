@@ -18,7 +18,7 @@ export async function updateInspectionStatus(): Promise<void> {
       .execute();
 
     if (dataSources.length === 0) {
-      getLogger("datasource").note("debug", "[InspectionStatus] No data sources to update");
+      getLogger("datasource").event("datasource.inspection.trace", { what: "No data sources to update" });
       return;
     }
 
@@ -46,12 +46,12 @@ export async function updateInspectionStatus(): Promise<void> {
           .where("is_inspected", "=", false)
           .execute() as any);
 
-        getLogger("datasource").note("debug", `[InspectionStatus] Updated data source ${ds.id} as inspected`);
+        getLogger("datasource").event("datasource.inspection.trace", { what: `Updated data source ${ds.id} as inspected` });
       }
     }
 
-    getLogger("datasource").note("debug", "[InspectionStatus] Inspection status update complete");
+    getLogger("datasource").event("datasource.inspection.trace", { what: "Inspection status update complete" });
   } catch (error) {
-    getLogger("datasource").note("error", "[InspectionStatus] Error updating inspection status:", { err: error });
+    getLogger("datasource").event("datasource.inspection.failed", { what: "Error updating inspection status", err: error });
   }
 }

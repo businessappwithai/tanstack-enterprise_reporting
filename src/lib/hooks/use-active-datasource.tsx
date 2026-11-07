@@ -57,7 +57,7 @@ export function ActiveDataSourceProvider({ children }: { children: ReactNode }) 
         setActiveDataSourceState(null);
       }
     } catch (error) {
-      getLogger("client").note("error", "Error fetching active data source:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error fetching active data source", err: error });
       setActiveDataSourceState(null);
     } finally {
       setIsLoading(false);
@@ -87,7 +87,7 @@ export function ActiveDataSourceProvider({ children }: { children: ReactNode }) 
         throw new Error(data.error?.message || "Failed to set active data source");
       }
     } catch (error) {
-      getLogger("client").note("error", "Error setting active data source:", { err: error });
+      getLogger("client").event("client.ui.failed", { what: "Error setting active data source", err: error });
       throw error;
     }
   };

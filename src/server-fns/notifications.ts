@@ -34,7 +34,7 @@ export const fetchNotificationsFn = createServerFn({ method: "GET" })
       const rows = await query.selectAll().execute();
       return { success: true, data: rows };
     } catch (error) {
-      getLogger("app").note("error", "Error fetching notifications:", { err: error });
+      getLogger("app").event("app.serverfn.failed", { what: "Error fetching notifications", err: error });
       return {
         success: false,
         data: [],
@@ -62,7 +62,7 @@ export const markNotificationAsReadFn = createServerFn({ method: "POST" })
 
       return { success: true };
     } catch (error) {
-      getLogger("app").note("error", "Error marking notification as read:", { err: error });
+      getLogger("app").event("app.serverfn.failed", { what: "Error marking notification as read", err: error });
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to update notification",
@@ -87,7 +87,7 @@ export const markAllNotificationsAsReadFn = createServerFn({ method: "POST" }).h
 
     return { success: true };
   } catch (error) {
-    getLogger("app").note("error", "Error marking all notifications as read:", { err: error });
+    getLogger("app").event("app.serverfn.failed", { what: "Error marking all notifications as read", err: error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update notifications",
@@ -113,7 +113,7 @@ export const deleteNotificationFn = createServerFn({ method: "POST" })
 
       return { success: true };
     } catch (error) {
-      getLogger("app").note("error", "Error deleting notification:", { err: error });
+      getLogger("app").event("app.serverfn.failed", { what: "Error deleting notification", err: error });
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to delete notification",

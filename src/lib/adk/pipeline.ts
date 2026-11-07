@@ -289,7 +289,7 @@ export async function runADKPipeline(
       );
     } catch (supervisorErr) {
       // Fallback: use the direct SQL generation tool if supervisor is unreachable
-      getLogger("nlquery").note("warn", "[ADK] Mastra supervisor unreachable, falling back to direct SQL generation:", { err: supervisorErr });
+      getLogger("nlquery").event("nlquery.pipeline.degraded", { what: "Mastra supervisor unreachable, falling back to direct SQL generation", err: supervisorErr });
       const sqlResult = await executeSqlGenerate({
         nlQuestion: nlRequest,
         schemaText: truncatedSchema,

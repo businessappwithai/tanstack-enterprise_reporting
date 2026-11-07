@@ -121,13 +121,13 @@ export async function runDueJobDefinitions(
           });
         }
       } catch (error) {
-        getLogger("jobs").note("error", `[job-runner] job=${job.id} could not be started:`, { err: error });
+        getLogger("jobs").event("jobs.runner.failed", { what: `Job=${job.id} could not be started`, err: error });
       }
     })
   );
 
   if (summary.started.length > 0) {
-    getLogger("jobs").note("debug", `[job-runner] ${summary.started.length} job(s) run for ${minute}`);
+    getLogger("jobs").event("jobs.runner.trace", { what: `${summary.started.length} job(s) run for ${minute}` });
   }
   return summary;
 }
@@ -217,10 +217,10 @@ let _handle: ReturnType<typeof setInterval> | null = null;
 /** Start polling. Safe to call twice. Errors are logged and never stop the loop. */
 export function startJobDefinitionRunner(): void {
   if (_handle) return;
-  getLogger("jobs").note("debug", `[job-runner] Starting job-definition runner (poll interval: ${POLL_MS / 1000}s, UTC)`);
+  getLogger("jobs").event("jobs.runner.trace", { what: `Starting job-definition runner (poll interval: ${POLL_MS / 1000}s, UTC)` });
   const tick = () =>
     runDueJobDefinitions(new Date()).catch((error) =>
-      getLogger("jobs").note("error", "[job-runner] tick failed:", { err: error })
+      getLogger("jobs").event("jobs.runner.failed", { what: "Tick failed", err: error })
     );
   tick();
   _handle = setInterval(tick, POLL_MS);
