@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { z } from "zod";
 import { createDsRole, getDsRoles } from "@/lib/permissions/ds-rbac";
 import { apiFailure, auditDsRbac, authorizeDsAdmin } from "@/lib/permissions/ds-rbac-api";
@@ -12,18 +14,18 @@ const createRoleSchema = z.object({
 export const Route = createFileRoute("/api/data-sources/$id/roles")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/data-sources/$id/roles", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
           return json({ success: true, data: await getDsRoles(params.id) });
         } catch (error) {
-          console.error("[ds-rbac] list roles failed:", error);
+          recordFailure(error, "[ds-rbac] list roles failed:");
           return apiFailure("SERVER_ERROR", "Failed to load roles", 500);
         }
-      },
+      }),
 
-      POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      POST: withApiHandler("/api/data-sources/$id/roles", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
@@ -53,10 +55,10 @@ export const Route = createFileRoute("/api/data-sources/$id/roles")({
           await auditDsRbac(who.user, "create", params.id, { role: role.name, roleId: role.id });
           return json({ success: true, data: role }, { status: 201 });
         } catch (error) {
-          console.error("[ds-rbac] create role failed:", error);
+          recordFailure(error, "[ds-rbac] create role failed:");
           return apiFailure("SERVER_ERROR", "Failed to create the role", 500);
         }
-      },
+      }),
     },
   },
 });

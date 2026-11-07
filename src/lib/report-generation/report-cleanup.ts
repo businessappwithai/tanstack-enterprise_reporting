@@ -8,6 +8,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { getDb } from "@/lib/db/config";
+import { getLogger } from "@/lib/logging/logger";
 
 const RETENTION_DAYS = parseInt(process.env.REPORT_ARTIFACT_RETENTION_DAYS || "90", 10);
 const OUTPUT_DIR = process.env.JOB_OUTPUT_PATH || "./job-outputs";
@@ -41,9 +42,7 @@ export async function cleanupExpiredReportArtifacts(): Promise<{
 
     if (expired.length === 0) return { deletedFiles: 0, deletedRecords: 0, errors: [] };
 
-    console.log(
-      `[report-cleanup] Found ${expired.length} expired artifact(s) older than ${RETENTION_DAYS} days`
-    );
+    getLogger("report").note("debug", `[report-cleanup] Found ${expired.length} expired artifact(s) older than ${RETENTION_DAYS} days`);
 
     // Delete files from disk
     const deletedDirs = new Set<string>();
@@ -87,12 +86,10 @@ export async function cleanupExpiredReportArtifacts(): Promise<{
       deletedRecords += batch.length;
     }
 
-    console.log(
-      `[report-cleanup] Deleted ${deletedFiles} file(s), ${deletedRecords} record(s), ${errors.length} error(s)`
-    );
+    getLogger("report").note("debug", `[report-cleanup] Deleted ${deletedFiles} file(s), ${deletedRecords} record(s), ${errors.length} error(s)`);
   } catch (err) {
     errors.push(`Cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
-    console.error("[report-cleanup]", errors[errors.length - 1]);
+    getLogger("report").note("error", "[report-cleanup]", { detail: [errors[errors.length - 1]] });
   }
 
   return { deletedFiles, deletedRecords, errors };

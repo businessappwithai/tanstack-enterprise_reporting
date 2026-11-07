@@ -4,6 +4,7 @@
  */
 
 import type { ChangeMessageOrDeleteKeyMessage } from "@tanstack/db";
+import { getLogger } from "@/lib/logging/logger";
 
 /**
  * Configuration for ElectricSQL sync
@@ -54,7 +55,7 @@ export function createElectricSyncAdapter(config: ElectricSyncConfig) {
         // Cleanup: unsubscribe, flush changes, close connections
       };
     } catch (error) {
-      console.error(`Failed to initialize ElectricSQL sync for ${collectionName}:`, error);
+      getLogger("client").note("error", `Failed to initialize ElectricSQL sync for ${collectionName}:`, { err: error });
       // Mark ready even on error to unblock the UI
       markReady();
       return () => {};
@@ -108,7 +109,7 @@ export async function configureElectricSQL(options: {
   // 4. Start background sync process
 
   // For now, this is a placeholder
-  console.log("ElectricSQL configured with options:", options);
+  getLogger("client").note("debug", "ElectricSQL configured with options:", { detail: [options] });
 }
 
 /**

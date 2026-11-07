@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { transcribeAudio } from "@/lib/voice/qwen-asr";
@@ -13,7 +16,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/nl-query/voice")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/nl-query/voice", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -37,7 +40,7 @@ export const Route = createFileRoute("/api/nl-query/voice")({
           const text = await transcribeAudio(audioEntry);
 
           if (!text) {
-            console.error("[Voice] Transcription returned empty result");
+            getLogger("voice").event("voice.transcription.failed", { reason: "the transcription was empty" });
             return json({
               success: false,
               error: "Transcription failed. Ensure Qwen3-ASR is available on llama.cpp server.",
@@ -53,11 +56,11 @@ export const Route = createFileRoute("/api/nl-query/voice")({
 
           return json({ success: true, text });
         } catch (error) {
-          console.error("[Voice] Error:", error);
+          recordFailure(error, "[Voice] Error:");
           const msg = error instanceof Error ? error.message : "Transcription failed";
           return json({ success: false, error: msg });
         }
-      },
+      }),
     },
   },
 });

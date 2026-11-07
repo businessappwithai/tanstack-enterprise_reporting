@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import { synthesizeSpeech } from "@/lib/voice/qwen-tts";
 
 export const Route = createFileRoute("/api/voice/synthesize")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/voice/synthesize", async ({ request }: { request: Request }) => {
         try {
           /*
            * Authenticated, which it was not.
@@ -47,13 +49,13 @@ export const Route = createFileRoute("/api/voice/synthesize")({
             headers: { "Content-Type": "audio/mpeg" },
           });
         } catch (error) {
-          console.error("[Synthesize] Error:", error);
+          recordFailure(error, "[Synthesize] Error:");
           return new Response(JSON.stringify({ error: "Internal server error" }), {
             status: 500,
             headers: { "Content-Type": "application/json" },
           });
         }
-      },
+      }),
     },
   },
 });

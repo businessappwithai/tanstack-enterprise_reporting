@@ -22,10 +22,10 @@
  * mistake cannot recur.
  */
 
-import { classify, categoryForStatus } from "@/lib/errors/app-error";
+import { categoryForStatus, classify } from "@/lib/errors/app-error";
 import { getLogger } from "@/lib/logging/logger";
 import { ERROR_CATEGORIES } from "@/lib/logging/log-spec";
-import { acceptRequestId, runWithRequestContext } from "@/lib/logging/request-context";
+import { acceptRequestId, type RequestContext, runWithRequestContext } from "@/lib/logging/request-context";
 import { json } from "@/lib/server/response";
 
 const SLOW_MS = Number(process.env.HTTP_SLOW_REQUEST_MS ?? 5000);
@@ -56,7 +56,13 @@ function withRequestId(response: Response, requestId: string): Response {
   }
 }
 
-export function withApiHandler<C extends { request: Request }>(
+/**
+ * `C` is the context TanStack passes a handler: `{ request, params, … }`. It cannot be inferred
+ * from where the handler is placed (the handlers option is a union), so a handler that reads
+ * `params` would be typed as if it had none. Defaulting to `any` leaves `params` available;
+ * a route that wants it typed annotates its own parameter.
+ */
+export function withApiHandler<C extends { request: Request } = any>(
   route: string,
   handler: Handler<C>
 ): (context: C) => Promise<Response> {
@@ -67,7 +73,8 @@ export function withApiHandler<C extends { request: Request }>(
     const log = getLogger("http");
     const base = { method: request.method, path: route, requestId };
 
-    return runWithRequestContext({ requestId, route, userId: null }, async () => {
+    const requestContext: RequestContext = { requestId, route, userId: null };
+    return runWithRequestContext(requestContext, async () => {
       let response: Response;
       let thrown: unknown;
 
@@ -99,7 +106,13 @@ export function withApiHandler<C extends { request: Request }>(
         const errorCode = thrown ? classify(thrown).code : await codeOf(response);
         const fields = { ...base, status, durationMs, errorCategory: category, errorCode };
         if (status >= 500) {
-          log.event("http.request.failed", { ...fields, err: thrown ?? null });
+          // The cause is what was thrown, or what the route's own catch noted before it
+          // answered by hand; either way it is on this one line.
+          log.event("http.request.failed", {
+            ...fields,
+            err: thrown ?? requestContext.failure?.err ?? null,
+            ...(requestContext.failure && { note: requestContext.failure.note }),
+          });
         } else if (ERROR_CATEGORIES[category].level === "info") {
           log.event("http.request.refused", fields);
         } else {

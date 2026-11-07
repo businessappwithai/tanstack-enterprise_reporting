@@ -30,6 +30,8 @@ export interface SinkEntry {
   requestId?: string | null;
   metadata?: Record<string, unknown>;
   errorStack?: string | null;
+  category?: string | null;
+  code?: string | null;
 }
 
 let buffer: SinkEntry[] = [];
@@ -37,15 +39,28 @@ let dropped = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 let flushing: Promise<void> | null = null;
 let reportDrop: ((dropped: number, reason: string) => void) | null = null;
+let writer: ((rows: Array<Record<string, unknown>>) => Promise<void>) | null = null;
+
+/**
+ * Who writes the rows. Registered by the database module, not imported here: this file is
+ * reached from pages that render in a browser, and a static or dynamic import of the database
+ * would put the server's connection code (and `crypto`) into the client bundle.
+ */
+export function setSinkWriter(write: (rows: Array<Record<string, unknown>>) => Promise<void>): void {
+  writer = write;
+}
 
 /** The lowest level written to the table. `LOG_DB_LEVEL=silent` turns it off. */
-export function sinkLevel(env: NodeJS.ProcessEnv = process.env): LogLevel | "silent" {
+export function sinkLevel(env: NodeJS.ProcessEnv = typeof process !== "undefined" ? process.env : {}): LogLevel | "silent" {
   const declared = env.LOG_DB_LEVEL;
   if (declared === "silent") return "silent";
   return declared && declared in LEVELS ? (declared as LogLevel) : "warn";
 }
 
-export function wantsSink(level: LogLevel, env: NodeJS.ProcessEnv = process.env): boolean {
+export function wantsSink(
+  level: LogLevel,
+  env: NodeJS.ProcessEnv = typeof process !== "undefined" ? process.env : {}
+): boolean {
   const floor = sinkLevel(env);
   return floor !== "silent" && LEVELS[level] >= LEVELS[floor];
 }
@@ -82,6 +97,10 @@ export function flushLogs(): Promise<void> {
   if (flushing) return flushing;
   if (buffer.length === 0 && dropped === 0) return Promise.resolve();
 
+  // No database module loaded in this process (a browser, a script): nothing to write to, and the
+  // bounded buffer is the whole cost of waiting.
+  if (!writer) return Promise.resolve();
+
   flushing = (async () => {
     const batch = buffer.splice(0, BATCH);
     if (dropped > 0) {
@@ -92,7 +111,6 @@ export function flushLogs(): Promise<void> {
     if (batch.length === 0) return;
 
     try {
-      const { getDb } = await import("@/lib/db/config");
       const rows = batch.map((entry) => ({
         id: generateId(),
         timestamp: entry.timestamp,
@@ -105,8 +123,10 @@ export function flushLogs(): Promise<void> {
         error_stack: entry.errorStack ?? null,
         request_id: entry.requestId ?? null,
         message_vector: null,
+        category: entry.category ?? null,
+        code: entry.code ?? null,
       }));
-      await getDb().insertInto("logs").values(rows).execute();
+      await writer?.(rows);
     } catch (err) {
       // Not re-queued: a database that cannot take these will not take them on
       // the next attempt either, and the buffer is bounded for exactly this.

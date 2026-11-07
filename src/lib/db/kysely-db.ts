@@ -7,6 +7,8 @@ import { type Generated, Kysely, PostgresDialect, sql } from "kysely";
 import type { DatabaseClientType } from "@/types/database";
 import { Pool as PostgresPool } from "pg";
 import { bootstrapSchema } from "./bootstrap";
+import { setSinkWriter } from "@/lib/logging/db-sink";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface Database {
   users: UsersTable;
@@ -299,6 +301,10 @@ export interface LogsTable {
   error_stack: string | null;
   request_id: string | null;
   message_vector: string | null;
+  /** Error category (`validation`, `integration`, …) when the line is about a failure. */
+  category?: string | null;
+  /** Catalogue code (`QUERY_FAILED`, …) when the line is about a failure. */
+  code?: string | null;
 }
 
 export interface EmailTemplatesTable {
@@ -631,7 +637,7 @@ function buildConnectionString(): string {
 function initializeDatabase(): KyselyDB {
   const connectionString = buildConnectionString();
   const safeUrl = connectionString.replace(/:([^@]+)@/, ":***@");
-  console.log(`[db] Connecting to PostgreSQL: ${safeUrl}`);
+  getLogger("db").note("debug", `[db] Connecting to PostgreSQL: ${safeUrl}`);
 
   const pool = new PostgresPool({
     connectionString,
@@ -646,7 +652,7 @@ function initializeDatabase(): KyselyDB {
   // the application down with it. The pool discards the broken client itself, and the
   // next query gets a fresh one, so logging is all there is to do here.
   pool.on("error", (err: Error) => {
-    console.warn(`[db] Idle config-database connection lost: ${err.message}`);
+    getLogger("db").event("db.pool.error", { pool: "config", err });
   });
 
   return new Kysely<Database>({ dialect: new PostgresDialect({ pool }) });
@@ -682,8 +688,8 @@ export function getDb(): KyselyDB {
     db = initializeDatabase();
 
     bootstrapPromise = bootstrapOnce(db)
-      .then(() => console.log("[db] Database ready"))
-      .catch((err) => console.error("[db] Bootstrap failed:", err));
+      .then(() => getLogger("db").note("debug", "[db] Database ready"))
+      .catch((err) => getLogger("db").note("error", "[db] Bootstrap failed:", { err: err }));
 
     // internal bootstrap tracking
     (db as any).__bootstrapPromise = bootstrapPromise;
@@ -705,7 +711,7 @@ export async function closeDb(): Promise<void> {
     try {
       await db.destroy();
     } catch (err) {
-      console.error("[db] Error closing database:", err);
+      getLogger("db").note("error", "[db] Error closing database:", { err: err });
     }
     db = null;
   }
@@ -715,3 +721,15 @@ export async function closeDb(): Promise<void> {
 export function isPostgres(): boolean {
   return true;
 }
+
+/**
+ * The System Logs table is written through this connection. Registered here, in the module that
+ * owns the connection, so the logger never imports the database (it is also bundled for pages
+ * that render in a browser).
+ */
+setSinkWriter(async (rows) => {
+  await getDb()
+    .insertInto("logs")
+    .values(rows as never)
+    .execute();
+});

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
 import { getConnection } from "@/lib/db/connection-manager";
@@ -17,7 +19,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/sql/schema/$dataSourceId")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/sql/schema/$dataSourceId", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -54,7 +56,7 @@ export const Route = createFileRoute("/api/sql/schema/$dataSourceId")({
           try {
             syncResult = await SyncService.syncDataSource(dataSourceId, session.user.id);
           } catch (e) {
-            console.error("[Schema Sync] Failed to sync metadata:", e);
+            recordFailure(e, "[Schema Sync] Failed to sync metadata:");
           }
 
           if (schema.tables.length === 0 && schema.views.length === 0) {
@@ -82,7 +84,7 @@ export const Route = createFileRoute("/api/sql/schema/$dataSourceId")({
             },
           });
         } catch (error) {
-          console.error("Schema introspection error:", error);
+          recordFailure(error, "Schema introspection error:");
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
           if (errorMessage.includes("SQLITE_CANTOPEN")) {
@@ -107,7 +109,7 @@ export const Route = createFileRoute("/api/sql/schema/$dataSourceId")({
             { status: 500 }
           );
         }
-      },
+      }),
     },
   },
 });

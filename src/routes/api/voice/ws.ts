@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
 import { auth } from "@/lib/auth/config";
 import type { EnhancedSchemaMetadata } from "@/lib/nlquery/llama-translator";
 import { isDenied, translateNLToSQLViaLlama } from "@/lib/nlquery/llama-translator";
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/api/voice/ws")({
         let isProcessing = false;
 
         socket.onopen = () => {
-          console.log("[WS] Voice connection established");
+          getLogger("voice").event("voice.connection.opened");
           socket.send(JSON.stringify({ type: "ready" }));
         };
 
@@ -138,7 +139,7 @@ export const Route = createFileRoute("/api/voice/ws")({
               }
             }
           } catch (error) {
-            console.error("[WS] Message handling error:", error);
+            getLogger("client").note("error", "[WS] Message handling error:", { err: error });
             socket.send(
               JSON.stringify({
                 type: "error",
@@ -149,11 +150,11 @@ export const Route = createFileRoute("/api/voice/ws")({
         };
 
         socket.onclose = () => {
-          console.log("[WS] Voice connection closed");
+          getLogger("voice").event("voice.connection.closed");
         };
 
         socket.onerror = (error: any) => {
-          console.error("[WS] WebSocket error:", error);
+          getLogger("voice").event("voice.socket.error", { err: error });
         };
 
         return new Response(null, { status: 101 });

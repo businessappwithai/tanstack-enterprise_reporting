@@ -15,6 +15,7 @@ import { logAudit } from "@/lib/security/audit";
 import { encrypt, decrypt } from "@/lib/security/encryption";
 import { closeConnection } from "@/lib/db/connection-manager";
 import { withErrorHandler } from "@/lib/server-fns/with-error-handler";
+import { getLogger } from "@/lib/logging/logger";
 
 /** The schema's client names mapped to the values connection-manager switches on. */
 function toClientType(clientType: "postgres" | "mysql" | "sqlite3"): DatabaseClientType {
@@ -85,7 +86,7 @@ export const getDataSource = createServerFn({ method: "GET" })
               .catch(console.error);
           }
         } catch (decryptError) {
-          console.error("Failed to decrypt connection config", { dataSourceId: id }, decryptError);
+          getLogger("app").note("error", "Failed to decrypt connection config", { detail: [{ dataSourceId: id }, decryptError] });
           throw decryptError;
         }
 
@@ -370,7 +371,7 @@ export const inspectDataSource = createServerFn({ method: "POST" })
           return result;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to inspect schema";
-          console.error("[inspectDataSource] Error:", message, { dataSourceId: id });
+          getLogger("app").note("error", "[inspectDataSource] Error:", { detail: [message, { dataSourceId: id }] });
           throw error;
         }
       },

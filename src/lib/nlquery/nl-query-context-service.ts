@@ -8,6 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import { getDb } from "@/lib/db/config";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface QueryAnalysis {
   queryType: "SELECT" | "JOIN" | "AGGREGATE" | "WINDOW" | "UNION" | "CTE";
@@ -209,7 +210,7 @@ export async function findSimilarQueries(
       similarity: r.similarity,
     }));
   } catch (error) {
-    console.warn("[NLQueryContext] pgvector query failed, using fallback", error);
+    getLogger("nlquery").note("warn", "[NLQueryContext] pgvector query failed, using fallback", { err: error });
     // Fallback to non-vector query
     return findSimilarQueries(dataSourceId, roleName, undefined, limit);
   }

@@ -19,6 +19,7 @@ import { OfflineIndicator } from "@/components/wasm/OfflineIndicator";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import type { DashboardLayout, DashboardWidget } from "@/types/database";
 import type { ActiveFilter as ActiveFilterType } from "@/types/filters";
+import { getLogger } from "@/lib/logging/logger";
 
 interface WidgetWithData extends DashboardWidget {
   title?: string;
@@ -98,7 +99,7 @@ function DashboardViewerContent({ dashboardId }: { dashboardId: string }) {
           setLayout(layoutConfig.layouts.lg);
         }
       } catch (error) {
-        console.error("Error parsing layout config:", error);
+        getLogger("client").note("error", "Error parsing layout config:", { err: error });
       }
     } else if (widgets.length > 0) {
       // Build layout from widgets' position_config

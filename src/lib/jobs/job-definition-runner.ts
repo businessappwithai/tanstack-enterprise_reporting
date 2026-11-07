@@ -23,6 +23,7 @@ import { cronMatches } from "./cron";
 import { processExportJob } from "./workers/export-worker";
 import { processReportJob } from "./workers/report-worker";
 import type { JobResult } from "./types";
+import { getLogger } from "@/lib/logging/logger";
 
 const POLL_MS = 20_000;
 const STALE_RUNNING_MS = 60 * 60 * 1000;
@@ -120,13 +121,13 @@ export async function runDueJobDefinitions(
           });
         }
       } catch (error) {
-        console.error(`[job-runner] job=${job.id} could not be started:`, error);
+        getLogger("jobs").note("error", `[job-runner] job=${job.id} could not be started:`, { err: error });
       }
     })
   );
 
   if (summary.started.length > 0) {
-    console.log(`[job-runner] ${summary.started.length} job(s) run for ${minute}`);
+    getLogger("jobs").note("debug", `[job-runner] ${summary.started.length} job(s) run for ${minute}`);
   }
   return summary;
 }
@@ -216,10 +217,10 @@ let _handle: ReturnType<typeof setInterval> | null = null;
 /** Start polling. Safe to call twice. Errors are logged and never stop the loop. */
 export function startJobDefinitionRunner(): void {
   if (_handle) return;
-  console.log(`[job-runner] Starting job-definition runner (poll interval: ${POLL_MS / 1000}s, UTC)`);
+  getLogger("jobs").note("debug", `[job-runner] Starting job-definition runner (poll interval: ${POLL_MS / 1000}s, UTC)`);
   const tick = () =>
     runDueJobDefinitions(new Date()).catch((error) =>
-      console.error("[job-runner] tick failed:", error)
+      getLogger("jobs").note("error", "[job-runner] tick failed:", { err: error })
     );
   tick();
   _handle = setInterval(tick, POLL_MS);

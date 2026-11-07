@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { getLogger } from "@/lib/logging/logger";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
@@ -64,11 +65,9 @@ function getKey(): Buffer {
      * it, out loud, and cannot do so in production.
      */
     if (devFallbackPermitted()) {
-      console.warn(
-        "[encryption] ENCRYPTION_KEY is not set and ALLOW_INSECURE_ENCRYPTION=1 — " +
+      getLogger("auth").note("warn", "[encryption] ENCRYPTION_KEY is not set and ALLOW_INSECURE_ENCRYPTION=1 — " +
           "using a hard-coded development key. Stored data-source passwords are " +
-          "NOT protected. Never do this outside local development."
-      );
+          "NOT protected. Never do this outside local development.");
       return crypto.scryptSync("default-dev-key-change-in-production", "salt", KEY_LENGTH);
     }
 
@@ -178,10 +177,7 @@ export function decrypt(ciphertext: string): string {
   } catch (error) {
     // The message and name are enough to tell a wrong key from a corrupt row.
     // Neither the ciphertext nor anything derived from the key goes in.
-    console.error(
-      "[encryption] decryption failed:",
-      error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-    );
+    getLogger("auth").note("error", "[encryption] decryption failed:", { detail: [error instanceof Error ? `${error.name}: ${error.message}` : String(error)] });
     throw error;
   }
 }

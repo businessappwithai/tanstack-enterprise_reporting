@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/nl-query/history")({
   server: {
     handlers: {
-      GET: async ({ request }: { request: Request }) => {
+      GET: withApiHandler("/api/nl-query/history", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -100,20 +102,11 @@ export const Route = createFileRoute("/api/nl-query/history")({
             meta: { total: Number(count), limit, offset },
           });
         } catch (error) {
-          console.error("History fetch error:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                message: error instanceof Error ? error.message : "Failed to fetch history",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch history");
         }
-      },
+      }),
 
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/nl-query/history", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -163,16 +156,9 @@ export const Route = createFileRoute("/api/nl-query/history")({
 
           return json({ success: true, data: { id } });
         } catch (error) {
-          console.error("History save error:", error);
-          return json(
-            {
-              success: false,
-              error: { message: error instanceof Error ? error.message : "Failed to save history" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to save history");
         }
-      },
+      }),
     },
   },
 });

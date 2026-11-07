@@ -9,6 +9,7 @@ import { getConnection } from "@/lib/db/connection-manager";
 import { introspectSchema } from "@/lib/sql/schema-introspection";
 import type { SchemaInfo } from "@/types/api";
 import type { DataSource, DsSchemaCache } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 interface SchemaContext {
   schemaInfo: SchemaInfo;
@@ -32,7 +33,7 @@ export async function introspectAndCacheSchema(dataSource: DataSource): Promise<
       const rows = await connection.selectFrom(table.name).selectAll().limit(5).execute();
       sampleData[table.name] = rows;
     } catch (error) {
-      console.warn(`Failed to fetch sample data for table ${table.name}:`, error);
+      getLogger("nlquery").note("warn", `Failed to fetch sample data for table ${table.name}:`, { err: error });
       sampleData[table.name] = [];
     }
   }

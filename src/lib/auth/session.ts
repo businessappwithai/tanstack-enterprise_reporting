@@ -17,6 +17,7 @@
 import { getDb } from "@/lib/db/config";
 import { getAuth, SESSION_COOKIE_NAME } from "./better-auth";
 import { SESSION_UNAVAILABLE_MESSAGE } from "./session-errors";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface SessionUser {
   id: string;
@@ -125,7 +126,7 @@ async function lookUpWithOneRetry(
     try {
       return await lookup();
     } catch (e) {
-      console.error("Failed to resolve session:", e);
+      getLogger("auth").note("error", "Failed to resolve session:", { err: e });
       throw new SessionUnavailableError(e);
     }
   }

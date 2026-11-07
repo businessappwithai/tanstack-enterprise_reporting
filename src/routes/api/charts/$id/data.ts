@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql as kyselySql } from "kysely";
 import { json } from "@/lib/server/response";
 import {
@@ -15,7 +17,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/charts/$id/data")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/charts/$id/data", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -119,19 +121,9 @@ export const Route = createFileRoute("/api/charts/$id/data")({
             },
           });
         } catch (error) {
-          console.error("Error fetching chart data:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                code: "SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Failed to fetch chart data",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch chart data");
         }
-      },
+      }),
     },
   },
 });

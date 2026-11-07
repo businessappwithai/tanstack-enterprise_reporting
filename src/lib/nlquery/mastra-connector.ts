@@ -7,6 +7,7 @@
 
 import type { SchemaMetadata } from "@/lib/validation/translation-validator";
 import { buildMastraContextPrompt } from "./nl-query-context-service";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface MastraAgentRequest {
   nlQuestion: string;
@@ -96,14 +97,14 @@ export async function translateNLToSQLViaMastra(
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.error(`[Mastra] Translation failed with status ${response.status}`);
+      getLogger("nlquery").note("error", `[Mastra] Translation failed with status ${response.status}`);
       return null;
     }
 
     const data = (await response.json()) as MastraAgentResponse;
     return data;
   } catch (error) {
-    console.error("[Mastra] Connection error:", error);
+    getLogger("nlquery").note("error", "[Mastra] Connection error:", { err: error });
     return null;
   }
 }
@@ -136,7 +137,7 @@ export async function validateSQLViaMastra(
     const data = (await response.json()) as { isValid: boolean; errors?: string[] };
     return { ...data, errors: data.errors || [] };
   } catch (error) {
-    console.error("[Mastra] Validation error:", error);
+    getLogger("nlquery").note("error", "[Mastra] Validation error:", { err: error });
     return { isValid: false, errors: ["Validation service unavailable"] };
   }
 }

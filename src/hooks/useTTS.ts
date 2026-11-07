@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { getLogger } from "@/lib/logging/logger";
 
 interface UseTTSState {
   isSpeaking: boolean;
@@ -71,7 +72,7 @@ export function useTTS() {
     } catch (error) {
       const msg = error instanceof Error ? error.message : "TTS error";
       setState({ isSpeaking: false, error: msg });
-      console.error("[useTTS] Error:", error);
+      getLogger("voice").note("error", "[useTTS] Error:", { err: error });
     }
   }, []);
 

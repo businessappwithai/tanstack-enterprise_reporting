@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import { createFileRoute } from "@tanstack/react-router";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
@@ -20,7 +21,7 @@ const MIME_TYPES: Record<string, string> = {
 export const Route = createFileRoute("/api/report-generation/artifacts/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/report-generation/artifacts/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         const session = await getSession(request);
         if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
 
@@ -152,7 +153,7 @@ export const Route = createFileRoute("/api/report-generation/artifacts/$id")({
           page,
           pageSize,
         });
-      },
+      }),
     },
   },
 });

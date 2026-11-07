@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import {
   refuseWithoutPermission,
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/dashboards/$id/widgets/$widgetId")({
   server: {
     handlers: {
-      DELETE: async ({ request, params }) => {
+      DELETE: withApiHandler("/api/dashboards/$id/widgets/$widgetId", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -67,15 +69,11 @@ export const Route = createFileRoute("/api/dashboards/$id/widgets/$widgetId")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting dashboard widget:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to delete widget" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to delete widget");
         }
-      },
+      }),
 
-      PUT: async ({ request, params }) => {
+      PUT: withApiHandler("/api/dashboards/$id/widgets/$widgetId", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -147,13 +145,9 @@ export const Route = createFileRoute("/api/dashboards/$id/widgets/$widgetId")({
 
           return json({ success: true, data: updated });
         } catch (error) {
-          console.error("Error updating dashboard widget:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to update widget" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update widget");
         }
-      },
+      }),
     },
   },
 });

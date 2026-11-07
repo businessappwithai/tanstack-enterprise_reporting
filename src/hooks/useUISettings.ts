@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getLogger } from "@/lib/logging/logger";
 
 interface UISettings {
   tableRowStripeColor: string;
@@ -19,7 +20,7 @@ export function useUISettings(): UISettings {
       try {
         setSettings(JSON.parse(saved));
       } catch (e) {
-        console.error("Failed to parse UI settings:", e);
+        getLogger("client").note("error", "Failed to parse UI settings:", { err: e });
         setSettings(DEFAULT_SETTINGS);
       }
     }
@@ -32,7 +33,7 @@ export function useUISettings(): UISettings {
         try {
           setSettings(JSON.parse(updated));
         } catch (e) {
-          console.error("Failed to parse updated UI settings:", e);
+          getLogger("client").note("error", "Failed to parse updated UI settings:", { err: e });
         }
       }
     };

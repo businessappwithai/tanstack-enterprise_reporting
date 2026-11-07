@@ -8,30 +8,65 @@
  * context and the fields are simply absent.
  */
 
-import { AsyncLocalStorage } from "node:async_hooks";
-import { randomUUID } from "node:crypto";
+import type { AsyncLocalStorage as AsyncLocalStorageType } from "node:async_hooks";
 
 export interface RequestContext {
   requestId: string;
   userId?: string | null;
   route?: string;
+  /** What a route's own `catch` noted before it answered, for the request's one log line. */
+  failure?: { err: unknown; note: string };
 }
 
-const storage = new AsyncLocalStorage<RequestContext>();
+/**
+ * Loaded without a static import so this module can sit in a bundle the browser also receives:
+ * the logger is imported by pages that render on both sides, and `node:async_hooks` does not
+ * exist in a browser. Where it is missing there is no request to carry a context for, and every
+ * function here degrades to "no context".
+ */
+function createStorage(): AsyncLocalStorageType<RequestContext> | undefined {
+  try {
+    const builtin = (globalThis as { process?: { getBuiltinModule?: (id: string) => unknown } }).process
+      ?.getBuiltinModule;
+    const mod = builtin?.("node:async_hooks") as typeof import("node:async_hooks") | undefined;
+    return mod ? new mod.AsyncLocalStorage<RequestContext>() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const storage = createStorage();
 
 export function currentRequestContext(): RequestContext | undefined {
-  return storage.getStore();
+  return storage?.getStore();
 }
 
 /** Run `fn` with this context in scope for everything it awaits. */
 export function runWithRequestContext<T>(context: RequestContext, fn: () => T): T {
-  return storage.run(context, fn);
+  return storage ? storage.run(context, fn) : fn();
 }
 
 /** Add to the open context, if there is one (the user, once the session is known). */
 export function setRequestContext(partial: Partial<RequestContext>): void {
-  const store = storage.getStore();
+  const store = storage?.getStore();
   if (store) Object.assign(store, partial);
+}
+
+/**
+ * Note the cause of a failure a route is about to answer itself.
+ *
+ *     } catch (error) {
+ *       recordFailure(error, "Error fetching report");
+ *       return json({ success: false, error: { … } }, { status: 500 });
+ *     }
+ *
+ * It replaces `console.error(label, error)`: nothing is printed here. The request's single
+ * `http.request.failed` line carries the cause (with its stack) and the label, so a failure is
+ * one line, not a request line plus a stray console line that shares no id with it.
+ */
+export function recordFailure(err: unknown, note: string): void {
+  const store = storage?.getStore();
+  if (store) store.failure = { err, note };
 }
 
 /**
@@ -43,5 +78,5 @@ export function setRequestContext(partial: Partial<RequestContext>): void {
 const REQUEST_ID = /^[A-Za-z0-9._:-]{8,64}$/;
 
 export function acceptRequestId(supplied: string | null | undefined): string {
-  return supplied && REQUEST_ID.test(supplied) ? supplied : randomUUID();
+  return supplied && REQUEST_ID.test(supplied) ? supplied : crypto.randomUUID();
 }

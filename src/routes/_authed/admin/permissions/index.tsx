@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import type { PermissionLevel, ResourceType } from "@/types/database";
 import { PageHeader } from "@/components/layout/page-header";
+import { getLogger } from "@/lib/logging/logger";
 
 const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
   { value: "dashboard", label: "Dashboard" },
@@ -139,7 +140,7 @@ function PermissionsManagementPage() {
         const items = data?.data?.items || data?.data || data?.items || data;
         return Array.isArray(items) ? items : [];
       } catch (error) {
-        console.error("Failed to fetch resources:", error);
+        getLogger("client").note("error", "Failed to fetch resources:", { err: error });
         return [];
       }
     },

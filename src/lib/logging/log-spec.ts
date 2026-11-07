@@ -175,21 +175,26 @@ export type ErrorCode = keyof typeof ERRORS;
 /*  Channels and events                                                        */
 /* -------------------------------------------------------------------------- */
 
-/** A channel declares the level of its least severe event. */
+/**
+ * A channel declares the most verbose level it can be turned up to. The environment clamps it:
+ * production logs at info whatever a channel declares, development shows debug. Every channel
+ * carries `debug` events (and free-text notes), so each is declared at debug.
+ */
 export const CHANNELS = {
-  app: "info",
-  http: "info",
-  auth: "info",
-  db: "info",
-  sql: "info",
-  datasource: "info",
-  nlquery: "info",
-  jobs: "info",
-  report: "info",
-  email: "info",
-  graph: "info",
-  voice: "info",
-  client: "info",
+  app: "debug",
+  http: "debug",
+  auth: "debug",
+  db: "debug",
+  sql: "debug",
+  datasource: "debug",
+  nlquery: "debug",
+  jobs: "debug",
+  report: "debug",
+  email: "debug",
+  graph: "debug",
+  voice: "debug",
+  client: "debug",
+  audit: "debug",
   logging: "warn",
 } as const satisfies Record<string, LogLevel>;
 
@@ -203,6 +208,12 @@ interface EventDef {
 }
 
 export const EVENTS = {
+  // The old free-text interface, kept in the spec so a line written through `note()` still has
+  // a level an operator controls. A call that matters should get an event of its own.
+  "note.debug": { channel: "app", level: "debug", message: "Note", fields: ["what"] },
+  "note.info": { channel: "app", level: "info", message: "Note", fields: ["what"] },
+  "note.warn": { channel: "app", level: "warn", message: "Warning", fields: ["what"] },
+  "note.error": { channel: "app", level: "error", message: "Failure", fields: ["what"] },
   "app.uncaught": { channel: "app", level: "fatal", message: "Uncaught exception", fields: ["err"] },
   "app.unhandled_rejection": { channel: "app", level: "error", message: "Unhandled promise rejection", fields: ["err"] },
   "app.shutdown": { channel: "app", level: "info", message: "Shutting down", fields: ["signal", "uptimeMs"] },
@@ -261,6 +272,37 @@ export const EVENTS = {
     message: "Query failed",
     fields: ["dataSourceId", "errorCode", "durationMs", "sqlChars", "userId"],
   },
+  "audit.write.failed": { channel: "audit", level: "warn", message: "Audit entry could not be written", fields: ["resource", "err"] },
+  "datasource.test.completed": {
+    channel: "datasource",
+    level: "info",
+    message: "Connection test completed",
+    fields: ["clientType", "connected", "durationMs"],
+  },
+  "datasource.test.refused": { channel: "datasource", level: "warn", message: "Connection test refused", fields: ["reason"] },
+  "datasource.test.failed": {
+    channel: "datasource",
+    level: "warn",
+    message: "Connection test failed",
+    fields: ["errorCode", "durationMs"],
+  },
+  "datasource.inspect.failed": {
+    channel: "datasource",
+    level: "warn",
+    message: "Schema inspection failed",
+    fields: ["errorCode"],
+  },
+  "voice.connection.opened": { channel: "voice", level: "info", message: "Voice connection opened", fields: [] },
+  "voice.connection.closed": { channel: "voice", level: "info", message: "Voice connection closed", fields: [] },
+  "voice.socket.error": { channel: "voice", level: "warn", message: "Voice socket error", fields: ["err"] },
+  "voice.transcription.failed": { channel: "voice", level: "warn", message: "Transcription failed", fields: ["reason"] },
+  "nlquery.embedding.store_failed": {
+    channel: "nlquery",
+    level: "warn",
+    message: "Embedding could not be stored",
+    fields: ["target", "err"],
+  },
+  "jobs.schedule.failed": { channel: "jobs", level: "warn", message: "Schedule could not be created", fields: ["target", "err"] },
   "logging.sink.dropped": {
     channel: "logging",
     level: "warn",

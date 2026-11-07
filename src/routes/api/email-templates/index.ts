@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql } from "kysely";
 import { getDb } from "@/lib/db/config";
 import {
@@ -21,7 +24,7 @@ export const Route = createFileRoute("/api/email-templates/")({
   server: {
     handlers: {
       // Paginated and searched at the database, per the rule in CLAUDE.md.
-      GET: async ({ request }: { request: Request }) => {
+      GET: withApiHandler("/api/email-templates/", async ({ request }: { request: Request }) => {
         try {
           const who = await authorizeTemplates(request, "view");
           if (who instanceof Response) return who;
@@ -57,12 +60,12 @@ export const Route = createFileRoute("/api/email-templates/")({
             },
           });
         } catch (error) {
-          console.error("[email-templates] list failed:", error);
+          recordFailure(error, "[email-templates] list failed:");
           return templateFailure("SERVER_ERROR", "Failed to load email templates", 500);
         }
-      },
+      }),
 
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/email-templates/", async ({ request }: { request: Request }) => {
         try {
           const who = await authorizeTemplates(request, "edit");
           if (who instanceof Response) return who;
@@ -113,7 +116,7 @@ export const Route = createFileRoute("/api/email-templates/")({
             resourceType: "setting",
             resourceId: id,
             details: { area: "email-template", name: input.name },
-          }).catch((e) => console.error("[email-templates] audit failed:", e));
+          }).catch((err) => getLogger("audit").event("audit.write.failed", { resource: "email_template", err }));
 
           const row = await db
             .selectFrom("email_templates")
@@ -125,10 +128,10 @@ export const Route = createFileRoute("/api/email-templates/")({
             { status: 201 }
           );
         } catch (error) {
-          console.error("[email-templates] create failed:", error);
+          recordFailure(error, "[email-templates] create failed:");
           return templateFailure("SERVER_ERROR", "Failed to create the template", 500);
         }
-      },
+      }),
     },
   },
 });

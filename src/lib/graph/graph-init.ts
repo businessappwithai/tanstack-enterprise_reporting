@@ -11,6 +11,7 @@
  */
 
 import { GRAPH_NAME, graphSql } from "./client";
+import { getLogger } from "@/lib/logging/logger";
 
 export async function initGraph(): Promise<void> {
   await graphSql(`CREATE EXTENSION IF NOT EXISTS age`);
@@ -20,11 +21,11 @@ export async function initGraph(): Promise<void> {
   // create_graph() raises an error if the graph already exists; catch it
   try {
     await graphSql(`SELECT create_graph($1)`, [GRAPH_NAME]);
-    console.log(`[graph] Created property graph: ${GRAPH_NAME}`);
+    getLogger("graph").note("debug", `[graph] Created property graph: ${GRAPH_NAME}`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (!msg.includes("already exists")) throw err;
   }
 
-  console.log(`[graph] Knowledge graph ready: ${GRAPH_NAME}`);
+  getLogger("graph").note("debug", `[graph] Knowledge graph ready: ${GRAPH_NAME}`);
 }

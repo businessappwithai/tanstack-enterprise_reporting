@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/queries/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/queries/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -36,14 +38,10 @@ export const Route = createFileRoute("/api/queries/$id")({
 
           return json({ success: true, data: query });
         } catch (error) {
-          console.error("Error fetching query:", error);
-          return json(
-            { success: false, error: { message: "Failed to fetch query" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch query");
         }
-      },
-      PUT: async ({ request, params }) => {
+      }),
+      PUT: withApiHandler("/api/queries/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -155,14 +153,10 @@ export const Route = createFileRoute("/api/queries/$id")({
 
           return json({ success: true, data: { id: params.id } });
         } catch (error) {
-          console.error("Error updating query:", error);
-          return json(
-            { success: false, error: { message: "Failed to update query" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update query");
         }
-      },
-      DELETE: async ({ request, params }) => {
+      }),
+      DELETE: withApiHandler("/api/queries/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -195,13 +189,9 @@ export const Route = createFileRoute("/api/queries/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting query:", error);
-          return json(
-            { success: false, error: { message: "Failed to delete query" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to delete query");
         }
-      },
+      }),
     },
   },
 });

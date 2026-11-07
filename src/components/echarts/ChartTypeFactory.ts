@@ -18,11 +18,12 @@ import {
 } from "./chart-types/BasicCharts";
 import { buildGeoScatter, buildMap } from "./chart-types/GeoCharts";
 import { buildBoxplot, buildCandlestick, buildParallel } from "./chart-types/StatisticalCharts";
+import { getLogger } from "@/lib/logging/logger";
 
 export function buildChart(config: EChartsConfig, rows: Record<string, unknown>[]): EChartsOption {
   const builder = BUILDER_MAP[config.type];
   if (!builder) {
-    console.warn(`Unknown chart type "${config.type}", falling back to bar`);
+    getLogger("client").note("warn", `Unknown chart type "${config.type}", falling back to bar`);
     return buildBar(config, rows);
   }
   return builder(config, rows);

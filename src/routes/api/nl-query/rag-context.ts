@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql } from "kysely";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
@@ -183,7 +185,7 @@ async function keywordMatchTables(
 export const Route = createFileRoute("/api/nl-query/rag-context")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/nl-query/rag-context", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -256,18 +258,9 @@ export const Route = createFileRoute("/api/nl-query/rag-context")({
             },
           });
         } catch (error) {
-          console.error("RAG context error:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                message: error instanceof Error ? error.message : "Failed to fetch RAG context",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch RAG context");
         }
-      },
+      }),
     },
   },
 });

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/data-sources/$id/usage")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/data-sources/$id/usage", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -45,7 +47,7 @@ export const Route = createFileRoute("/api/data-sources/$id/usage")({
             },
           });
         } catch (error) {
-          console.error("Data source usage error:", error);
+          recordFailure(error, "Data source usage error:");
           return json(
             {
               success: true,
@@ -58,7 +60,7 @@ export const Route = createFileRoute("/api/data-sources/$id/usage")({
             { status: 200 }
           );
         }
-      },
+      }),
     },
   },
 });

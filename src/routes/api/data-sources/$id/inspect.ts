@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
@@ -17,7 +20,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/data-sources/$id/inspect")({
   server: {
     handlers: {
-      POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      POST: withApiHandler("/api/data-sources/$id/inspect", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -188,12 +191,12 @@ export const Route = createFileRoute("/api/data-sources/$id/inspect")({
               errorMessage = errorCode || "Unknown error";
             }
           } catch (parseError) {
-            console.error("Error parsing error object:", parseError);
+            recordFailure(parseError, "Error parsing error object:");
             errorMessage = "Failed to inspect schema";
           }
 
-          console.error("Data source inspect error - code:", errorCode, "message:", errorMessage);
-          console.error("Data source inspect error - full:", JSON.stringify(error));
+          getLogger("datasource").event("datasource.inspect.failed", { errorCode: String(errorCode ?? "UNKNOWN") });
+          recordFailure(error, "Data source inspect failed");
 
           // Provide helpful error messages for common issues
           let userMessage = errorMessage;
@@ -220,7 +223,7 @@ export const Route = createFileRoute("/api/data-sources/$id/inspect")({
             { status: 500 }
           );
         }
-      },
+      }),
     },
   },
 });

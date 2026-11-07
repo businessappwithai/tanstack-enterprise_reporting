@@ -9,6 +9,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import type { SchemaMetadata } from "@/lib/validation/translation-validator";
+import { getLogger } from "@/lib/logging/logger";
 
 const TranslationResult = z.object({
   sql: z
@@ -34,7 +35,7 @@ export async function translateNLToSQL(
   schema: SchemaMetadata
 ): Promise<{ sql: string; explanation: string; warnings?: string[] } | null> {
   if (!process.env.OPENAI_API_KEY) {
-    console.warn("[NL→SQL] OPENAI_API_KEY not set, cannot translate");
+    getLogger("nlquery").note("warn", "[NL→SQL] OPENAI_API_KEY not set, cannot translate");
     return null;
   }
 
@@ -74,7 +75,7 @@ If the question cannot be answered with the available schema, explain why.`,
       warnings: result.object.warnings,
     };
   } catch (error) {
-    console.error("[NL→SQL] OpenAI translation failed:", error);
+    getLogger("nlquery").note("error", "[NL→SQL] OpenAI translation failed:", { err: error });
     return null;
   }
 }

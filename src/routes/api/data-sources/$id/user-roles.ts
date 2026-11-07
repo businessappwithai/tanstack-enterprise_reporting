@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { z } from "zod";
 import { getDb } from "@/lib/db/config";
 import {
@@ -18,18 +20,18 @@ const assignSchema = z.object({
 export const Route = createFileRoute("/api/data-sources/$id/user-roles")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/data-sources/$id/user-roles", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
           return json({ success: true, data: await getDsUserRoles(params.id) });
         } catch (error) {
-          console.error("[ds-rbac] list assignments failed:", error);
+          recordFailure(error, "[ds-rbac] list assignments failed:");
           return apiFailure("SERVER_ERROR", "Failed to load assignments", 500);
         }
-      },
+      }),
 
-      POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      POST: withApiHandler("/api/data-sources/$id/user-roles", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
@@ -66,12 +68,12 @@ export const Route = createFileRoute("/api/data-sources/$id/user-roles")({
           });
           return json({ success: true }, { status: 201 });
         } catch (error) {
-          console.error("[ds-rbac] assign failed:", error);
+          recordFailure(error, "[ds-rbac] assign failed:");
           return apiFailure("SERVER_ERROR", "Failed to assign the user", 500);
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      DELETE: withApiHandler("/api/data-sources/$id/user-roles", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeDsAdmin(request, params.id);
           if (who instanceof Response) return who;
@@ -87,10 +89,10 @@ export const Route = createFileRoute("/api/data-sources/$id/user-roles")({
           await auditDsRbac(who.user, "update", params.id, { removedUserId: userId, roleId });
           return json({ success: true });
         } catch (error) {
-          console.error("[ds-rbac] unassign failed:", error);
+          recordFailure(error, "[ds-rbac] unassign failed:");
           return apiFailure("SERVER_ERROR", "Failed to remove the assignment", 500);
         }
-      },
+      }),
     },
   },
 });

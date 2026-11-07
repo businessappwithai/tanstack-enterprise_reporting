@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import {
   refuseWithoutPermission,
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/dashboards/")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/dashboards/", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -57,18 +59,11 @@ export const Route = createFileRoute("/api/dashboards/")({
             },
           });
         } catch (error) {
-          console.error("Error fetching dashboards:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to fetch dashboards" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch dashboards");
         }
-      },
+      }),
 
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/dashboards/", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -129,16 +124,9 @@ export const Route = createFileRoute("/api/dashboards/")({
             { status: 201 }
           );
         } catch (error) {
-          console.error("Error creating dashboard:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to create dashboard" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to create dashboard");
         }
-      },
+      }),
     },
   },
 });

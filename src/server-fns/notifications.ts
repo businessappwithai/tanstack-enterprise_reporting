@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
+import { getLogger } from "@/lib/logging/logger";
 
 async function getSession() {
   const cookie = getRequestHeader("cookie") || "";
@@ -33,7 +34,7 @@ export const fetchNotificationsFn = createServerFn({ method: "GET" })
       const rows = await query.selectAll().execute();
       return { success: true, data: rows };
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      getLogger("app").note("error", "Error fetching notifications:", { err: error });
       return {
         success: false,
         data: [],
@@ -61,7 +62,7 @@ export const markNotificationAsReadFn = createServerFn({ method: "POST" })
 
       return { success: true };
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      getLogger("app").note("error", "Error marking notification as read:", { err: error });
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to update notification",
@@ -86,7 +87,7 @@ export const markAllNotificationsAsReadFn = createServerFn({ method: "POST" }).h
 
     return { success: true };
   } catch (error) {
-    console.error("Error marking all notifications as read:", error);
+    getLogger("app").note("error", "Error marking all notifications as read:", { err: error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update notifications",
@@ -112,7 +113,7 @@ export const deleteNotificationFn = createServerFn({ method: "POST" })
 
       return { success: true };
     } catch (error) {
-      console.error("Error deleting notification:", error);
+      getLogger("app").note("error", "Error deleting notification:", { err: error });
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to delete notification",

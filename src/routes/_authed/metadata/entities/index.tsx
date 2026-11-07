@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Database, RefreshCw, Search, Settings } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getLogger } from "@/lib/logging/logger";
 
 export const Route = createFileRoute("/_authed/metadata/entities/")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -26,18 +27,18 @@ function MetadataEntitiesPage() {
       if (showInactive) params.set("is_active", "false");
       if (dataSourceId) params.set("data_source_id", dataSourceId);
 
-      console.log("[MetadataEntities] Fetching with params:", {
+      getLogger("client").note("debug", "[MetadataEntities] Fetching with params:", { detail: [{
         showHidden,
         showInactive,
         dataSourceId,
         params: params.toString(),
-      });
+      }] });
       const res = await fetch(`/api/metadata/entities?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch entities");
       const data = (await res.json()) as {
         data?: { entities?: MetadataEntityListRow[] };
       };
-      console.log("[MetadataEntities] Response:", data);
+      getLogger("client").note("debug", "[MetadataEntities] Response:", { detail: [data] });
       return data;
     },
     refetchOnWindowFocus: false,

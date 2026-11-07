@@ -34,6 +34,7 @@ import { Text } from "@/components/ui/typography";
 import { usePermissions } from "@/lib/hooks/usePermissions";
 import { getDb } from "@/lib/db/config";
 import type { ResourceType } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () => {
   const db = getDb();
@@ -50,7 +51,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return 0;
       }
-      console.error(`Error counting ${tableName}:`, error);
+      getLogger("client").note("error", `Error counting ${tableName}:`, { err: error });
       return 0;
     }
   };
@@ -67,7 +68,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return 0;
       }
-      console.error("Error counting scheduled jobs:", error);
+      getLogger("client").note("error", "Error counting scheduled jobs:", { err: error });
       return 0;
     }
   };
@@ -86,7 +87,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return [];
       }
-      console.error("Error loading recent executions:", error);
+      getLogger("client").note("error", "Error loading recent executions:", { err: error });
       return [];
     }
   };
@@ -103,7 +104,7 @@ const getDashboardStatsFn = createServerFn({ method: "GET" }).handler(async () =
       if (error instanceof Error && error.message?.includes("no such table")) {
         return [];
       }
-      console.error("Error loading recent activity:", error);
+      getLogger("client").note("error", "Error loading recent activity:", { err: error });
       return [];
     }
   };

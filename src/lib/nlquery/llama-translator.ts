@@ -8,6 +8,7 @@
 import { validateSQLRBACAccess } from "@/lib/nlquery/sql-ast-validator";
 import type { SchemaMetadata } from "@/lib/validation/translation-validator";
 import { createReasoningClient, isLlamaReasoningAvailable } from "@/lib/voice/llama-client";
+import { getLogger } from "@/lib/logging/logger";
 
 const LLAMA_REASONING_MODEL = process.env.LLAMA_REASONING_MODEL || "qwen3.6";
 
@@ -49,7 +50,7 @@ export async function translateNLToSQLViaLlama(
   try {
     const available = await isLlamaReasoningAvailable();
     if (!available) {
-      console.warn("[Llama] Reasoning server not available");
+      getLogger("nlquery").note("warn", "[Llama] Reasoning server not available");
       return null;
     }
 
@@ -81,7 +82,7 @@ export async function translateNLToSQLViaLlama(
       if (userId && dataSourceId) {
         const rbacValidation = await validateSQLRBACAccess(userId, dataSourceId, refinedSQL);
         if (!rbacValidation.accessAllowed) {
-          console.warn("[Llama] RBAC validation failed for refined SQL:", rbacValidation.error);
+          getLogger("nlquery").note("warn", "[Llama] RBAC validation failed for refined SQL:", { detail: [rbacValidation.error] });
           return {
             denied: rbacValidation.error ?? "Access denied",
             deniedTables: rbacValidation.deniedTables,
@@ -114,7 +115,7 @@ export async function translateNLToSQLViaLlama(
     if (userId && dataSourceId) {
       const rbacValidation = await validateSQLRBACAccess(userId, dataSourceId, initialSQL);
       if (!rbacValidation.accessAllowed) {
-        console.warn("[Llama] RBAC validation failed:", rbacValidation.error);
+        getLogger("nlquery").note("warn", "[Llama] RBAC validation failed:", { detail: [rbacValidation.error] });
         return {
           denied: rbacValidation.error ?? "Access denied",
           deniedTables: rbacValidation.deniedTables,
@@ -128,7 +129,7 @@ export async function translateNLToSQLViaLlama(
       warnings: warnings.length > 0 ? warnings : undefined,
     };
   } catch (error) {
-    console.error("[Llama] Translation failed:", error);
+    getLogger("nlquery").note("error", "[Llama] Translation failed:", { err: error });
     return null;
   }
 }
@@ -184,7 +185,7 @@ Generate a SQL SELECT query that answers this question:`;
 
     // Check for inability to generate
     if (raw.includes("UNABLE_TO_GENERATE")) {
-      console.warn("[Llama] Model indicated inability to generate SQL");
+      getLogger("nlquery").note("warn", "[Llama] Model indicated inability to generate SQL");
       return null;
     }
 
@@ -198,7 +199,7 @@ Generate a SQL SELECT query that answers this question:`;
     const sqlMatch = stripped.match(/(WITH\s+.+?SELECT.+|SELECT.+)/is);
     return sqlMatch ? sqlMatch[0].trim() : null;
   } catch (error) {
-    console.error("[Llama] SQL generation failed:", error);
+    getLogger("nlquery").note("error", "[Llama] SQL generation failed:", { err: error });
     return null;
   }
 }
@@ -255,7 +256,7 @@ Generate a corrected SQL SELECT query (SELECT only, no mutations):`;
     const sqlMatch = raw.match(/(WITH\s+.+?SELECT.+|SELECT.+)/is);
     return sqlMatch ? sqlMatch[0].trim() : null;
   } catch (error) {
-    console.error("[Llama] SQL refinement failed:", error);
+    getLogger("nlquery").note("error", "[Llama] SQL refinement failed:", { err: error });
     return null;
   }
 }

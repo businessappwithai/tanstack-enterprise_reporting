@@ -45,6 +45,12 @@ export class ServerFunctionError extends Error {
 export interface AppErrorOptions {
   /** Written for a person; shown to the caller when the status is below 500. */
   message?: string;
+  /**
+   * The message was written by the author of this code, not taken from an exception, so it
+   * is safe to show even at 500 ("Failed to fetch report"). Without it a 5xx shows the
+   * catalogue's fixed text, because an unknown exception's message can be a driver's.
+   */
+  authored?: boolean;
   details?: Record<string, unknown>;
   /** What actually went wrong underneath. Logged, never sent. */
   cause?: unknown;
@@ -52,12 +58,14 @@ export interface AppErrorOptions {
 
 export class AppError extends ServerFunctionError {
   readonly category: ErrorCategory;
+  readonly authored: boolean;
 
   constructor(code: ErrorCode, options: AppErrorOptions = {}) {
     const definition = ERRORS[code];
     super(options.message ?? definition.message, code, definition.status, options.details);
     this.name = "AppError";
     this.category = definition.category;
+    this.authored = options.authored === true;
     if (options.cause !== undefined) (this as { cause?: unknown }).cause = options.cause;
   }
 }
@@ -65,6 +73,22 @@ export class AppError extends ServerFunctionError {
 /** Build an `AppError`. Throw it: `throw appError("NOT_FOUND", { message: "Report not found" })`. */
 export function appError(code: ErrorCode, options?: AppErrorOptions): AppError {
   return new AppError(code, options);
+}
+
+/**
+ * What a route's `catch` throws: the error itself when it already says what it is, otherwise
+ * a 500 carrying the route's own plain-language message and the real error as its cause.
+ *
+ *     } catch (error) {
+ *       throw serverFailure(error, "Failed to fetch report");
+ *     }
+ *
+ * The message is the route author's and is shown; the cause is logged with its stack and never
+ * sent. This replaces `message: error.message` and hand-built 500 bodies.
+ */
+export function serverFailure(error: unknown, message: string): ServerFunctionError {
+  if (error instanceof ServerFunctionError) return error;
+  return appError("SERVER_ERROR", { message, cause: error, authored: true });
 }
 
 /** The category a bare HTTP status falls in: the first declared that allows it. */
@@ -132,7 +156,13 @@ export function classify(exception: unknown): Classified {
       : categoryForStatus(exception.statusCode);
     const status = exception.statusCode;
     const code = known ? exception.code : FALLBACK_CODE[category];
-    if (status >= 500) return { ...fixed(code as ErrorCode, status), code: exception.code };
+    if (status >= 500) {
+      const authored = exception instanceof AppError && exception.authored;
+      return {
+        ...fixed(code as ErrorCode, status, authored ? exception.message : undefined),
+        code: exception.code,
+      };
+    }
     return {
       status,
       category,

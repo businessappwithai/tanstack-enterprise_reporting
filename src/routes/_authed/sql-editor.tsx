@@ -23,6 +23,7 @@ import { copilotRuntimeUrl, onCopilotError } from "@/lib/copilot/runtime-url";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import "@copilotkit/react-ui/styles.css";
+import { getLogger } from "@/lib/logging/logger";
 
 export const Route = createFileRoute("/_authed/sql-editor")({
   component: SQLEditorPage,
@@ -77,7 +78,7 @@ function SQLEditorContent() {
           }
         })
         .catch((error) => {
-          console.error("Failed to load query:", error);
+          getLogger("client").note("error", "Failed to load query:", { err: error });
         });
     } else {
       setEditingQueryId(null);

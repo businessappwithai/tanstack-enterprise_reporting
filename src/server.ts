@@ -5,6 +5,7 @@ import { closeDb, waitForDatabaseReady } from "@/lib/db/config";
 import { initializeWorkers, shutdownWorkers } from "@/lib/jobs/worker-runner";
 import { initGraph } from "@/lib/graph/graph-init";
 import { syncKnowledgeGraph } from "@/lib/graph/sync";
+import { getLogger } from "@/lib/logging/logger";
 
 // Persistent config store will be imported and initialized on first use
 
@@ -21,12 +22,12 @@ const SECURITY_HEADERS: Record<string, string> = {
 const handler = createStartHandler(defaultStreamHandler);
 
 // Start background workers (Trigger.dev or on-premise cron runner)
-initializeWorkers().catch((err) => console.error("[server] Worker init failed (non-fatal):", err));
+initializeWorkers().catch((err) => getLogger("app").note("error", "[server] Worker init failed (non-fatal):", { err: err }));
 
 // Bootstrap Apache AGE knowledge graph, then sync schema + config metadata
 initGraph()
   .then(() => syncKnowledgeGraph())
-  .catch((err) => console.warn("[server] Knowledge graph init failed (non-fatal):", err));
+  .catch((err) => getLogger("app").note("warn", "[server] Knowledge graph init failed (non-fatal):", { err: err }));
 
 const fetch: RequestHandler<Register> = async (request, opts) => {
   await waitForDatabaseReady();
@@ -47,7 +48,7 @@ const fetch: RequestHandler<Register> = async (request, opts) => {
 // Graceful shutdown for proper database cleanup
 if (typeof process !== "undefined" && process.versions?.node) {
   const shutdown = async () => {
-    console.log("[server] Closing database connections...");
+    getLogger("app").note("debug", "[server] Closing database connections...");
     await shutdownWorkers();
     await closeDb();
     process.exit(0);

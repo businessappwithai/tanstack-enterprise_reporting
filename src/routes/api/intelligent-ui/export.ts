@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { getDb } from "@/lib/db/config";
 import { executeNlQueryPipeline } from "@/lib/mastra/nl-query-pipeline";
@@ -42,7 +44,7 @@ function slug(text: string): string {
 export const Route = createFileRoute("/api/intelligent-ui/export")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/intelligent-ui/export", async ({ request }: { request: Request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) return failure("UNAUTHORIZED", "Unauthorized", 401);
@@ -146,7 +148,7 @@ export const Route = createFileRoute("/api/intelligent-ui/export")({
           } catch (auditError) {
             // The file has been built and the access checks have passed; a failed audit
             // write is logged loudly rather than withholding a report the user may read.
-            console.error("[intelligent-ui] Failed to audit-log export:", auditError);
+            recordFailure(auditError, "[intelligent-ui] Failed to audit-log export:");
           }
 
           const filename = `intelligent-ui-${slug(title)}-${generatedAt.toISOString().slice(0, 10)}.xlsx`;
@@ -158,10 +160,10 @@ export const Route = createFileRoute("/api/intelligent-ui/export")({
             },
           });
         } catch (error) {
-          console.error("[intelligent-ui] Export failed:", error);
+          recordFailure(error, "[intelligent-ui] Export failed:");
           return failure("SERVER_ERROR", "Failed to build the Excel export", 500);
         }
-      },
+      }),
     },
   },
 });

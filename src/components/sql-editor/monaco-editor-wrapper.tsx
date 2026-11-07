@@ -7,6 +7,7 @@ import type { editor } from "monaco-editor";
 import { useTheme } from "next-themes";
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import type { SchemaInfo } from "@/types/api";
+import { getLogger } from "@/lib/logging/logger";
 
 interface MonacoSQLEditorProps {
   value: string;
@@ -56,7 +57,7 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
 
   const handleEditorMount: OnMount = useCallback(
     (editor: editor.IStandaloneCodeEditor, monaco) => {
-      console.log("[INIT] MONACO EDITOR MOUNTING...");
+      getLogger("sql").note("debug", "[INIT] MONACO EDITOR MOUNTING...");
 
       editorRef.current = editor;
 
@@ -73,30 +74,30 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
 
       // Add execute shortcut
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-        console.log("[SHORTCUT] Execute triggered");
+        getLogger("sql").note("debug", "[SHORTCUT] Execute triggered");
         props.onExecute?.();
       });
 
       // Add format shortcut
       editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => {
-        console.log("[SHORTCUT] Format triggered");
+        getLogger("sql").note("debug", "[SHORTCUT] Format triggered");
         editor.getAction("editor.action.formatDocument")?.run();
       });
 
       // Monitor paste events from Monaco
       editor.onDidPaste((_event) => {
-        console.log("✅✅✅ MONACO NATIVE PASTE SUCCESSFUL ✅✅✅");
-        console.log("Current editor value:", editor.getValue().substring(0, 100));
+        getLogger("sql").note("debug", "✅✅✅ MONACO NATIVE PASTE SUCCESSFUL ✅✅✅");
+        getLogger("sql").note("debug", "Current editor value:", { detail: [editor.getValue().substring(0, 100)] });
       });
 
       // Monitor all content changes
       editor.onDidChangeModelContent((e) => {
         if (e.changes.length > 0) {
-          console.log("[CONTENT] Model content changed!");
+          getLogger("sql").note("debug", "[CONTENT] Model content changed!");
         }
       });
 
-      console.log("[INIT] ✅ Editor mounted successfully");
+      getLogger("sql").note("debug", "[INIT] ✅ Editor mounted successfully");
     },
     [props.onExecute, theme]
   );
@@ -116,26 +117,26 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
 
   const handlePasteViaClipboardAPI = useCallback(async () => {
     if (!editorRef.current) {
-      console.error("[MOUSE PASTE] No editor ref");
+      getLogger("sql").note("error", "[MOUSE PASTE] No editor ref");
       return;
     }
 
     try {
-      console.log("[MOUSE PASTE] Reading from clipboard API...");
+      getLogger("sql").note("debug", "[MOUSE PASTE] Reading from clipboard API...");
 
       // Read clipboard content
       const clipboardText = await navigator.clipboard.readText();
-      console.log("[MOUSE PASTE] Clipboard content:", clipboardText.substring(0, 100));
+      getLogger("sql").note("debug", "[MOUSE PASTE] Clipboard content:", { detail: [clipboardText.substring(0, 100)] });
 
       if (!clipboardText) {
-        console.warn("[MOUSE PASTE] Clipboard is empty");
+        getLogger("sql").note("warn", "[MOUSE PASTE] Clipboard is empty");
         return;
       }
 
       // Get current selection and cursor position
       const selection = editorRef.current.getSelection();
       if (!selection) return;
-      console.log("[MOUSE PASTE] Current selection:", selection);
+      getLogger("sql").note("debug", "[MOUSE PASTE] Current selection:", { detail: [selection] });
 
       // Insert text at cursor position
       editorRef.current.executeEdits("paste", [
@@ -146,12 +147,12 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
         },
       ]);
 
-      console.log("[MOUSE PASTE] ✅ Successfully inserted text");
-      console.log("[MOUSE PASTE] New value:", editorRef.current.getValue().substring(0, 100));
+      getLogger("sql").note("debug", "[MOUSE PASTE] ✅ Successfully inserted text");
+      getLogger("sql").note("debug", "[MOUSE PASTE] New value:", { detail: [editorRef.current.getValue().substring(0, 100)] });
 
       setShowPasteMenu(false);
     } catch (err) {
-      console.error("[MOUSE PASTE] ❌ Failed to paste:", err);
+      getLogger("sql").note("error", "[MOUSE PASTE] ❌ Failed to paste:", { err: err });
       alert("Failed to paste. Please check browser permissions and try again.");
       setShowPasteMenu(false);
     }
@@ -162,7 +163,7 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    console.log("[CONTEXT MENU] Right-click detected");
+    getLogger("sql").note("debug", "[CONTEXT MENU] Right-click detected");
 
     // Prevent default context menu
     e.preventDefault();
@@ -173,7 +174,7 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
     const x = e.clientX;
     const y = e.clientY;
 
-    console.log("[CONTEXT MENU] Position:", { x, y, rect });
+    getLogger("sql").note("debug", "[CONTEXT MENU] Position:", { detail: [{ x, y, rect }] });
 
     setPastePosition({ x, y });
     setShowPasteMenu(true);
@@ -184,13 +185,13 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   const handleMousePaste = useCallback(async (e: React.ClipboardEvent<HTMLDivElement>) => {
-    console.log("═══════════════════════════════════════════════════════════");
-    console.log("[GLOBAL MOUSE PASTE] Paste event detected via mouse!");
-    console.log("Event:", {
+    getLogger("sql").note("debug", "═══════════════════════════════════════════════════════════");
+    getLogger("sql").note("debug", "[GLOBAL MOUSE PASTE] Paste event detected via mouse!");
+    getLogger("sql").note("debug", "Event:", { detail: [{
       type: e.type,
       clipboardData: !!e.clipboardData,
       types: e.clipboardData?.types,
-    });
+    }] });
 
     // Don't prevent default - let it propagate, but also handle it via clipboard API
     if (editorRef.current?.hasTextFocus()) {
@@ -199,7 +200,7 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
 
       try {
         const clipboardText = await navigator.clipboard.readText();
-        console.log("[GLOBAL MOUSE PASTE] Clipboard content:", clipboardText.substring(0, 100));
+        getLogger("sql").note("debug", "[GLOBAL MOUSE PASTE] Clipboard content:", { detail: [clipboardText.substring(0, 100)] });
 
         if (clipboardText) {
           const selection = editorRef.current.getSelection();
@@ -211,14 +212,14 @@ export function MonacoSQLEditorWrapper(props: MonacoSQLEditorProps) {
               forceMoveMarkers: true,
             },
           ]);
-          console.log("[GLOBAL MOUSE PASTE] ✅ Text inserted");
+          getLogger("sql").note("debug", "[GLOBAL MOUSE PASTE] ✅ Text inserted");
         }
       } catch (err) {
-        console.error("[GLOBAL MOUSE PASTE] ❌ Failed:", err);
+        getLogger("sql").note("error", "[GLOBAL MOUSE PASTE] ❌ Failed:", { err: err });
       }
     }
 
-    console.log("═══════════════════════════════════════════════════════════");
+    getLogger("sql").note("debug", "═══════════════════════════════════════════════════════════");
   }, []);
 
   const options = useMemo<editor.IStandaloneEditorConstructionOptions>(

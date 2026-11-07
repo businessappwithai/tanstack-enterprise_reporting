@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { getDb } from "@/lib/db/config";
 import {
   authorizeTemplates,
@@ -24,7 +27,7 @@ async function load(id: string): Promise<EmailTemplateRow | undefined> {
 export const Route = createFileRoute("/api/email-templates/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/email-templates/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeTemplates(request, "view");
           if (who instanceof Response) return who;
@@ -32,12 +35,12 @@ export const Route = createFileRoute("/api/email-templates/$id")({
           if (!row) return templateFailure("NOT_FOUND", "Template not found", 404);
           return json({ success: true, data: toEmailTemplate(row) });
         } catch (error) {
-          console.error("[email-templates] get failed:", error);
+          recordFailure(error, "[email-templates] get failed:");
           return templateFailure("SERVER_ERROR", "Failed to load the template", 500);
         }
-      },
+      }),
 
-      PUT: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      PUT: withApiHandler("/api/email-templates/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeTemplates(request, "edit");
           if (who instanceof Response) return who;
@@ -85,17 +88,17 @@ export const Route = createFileRoute("/api/email-templates/$id")({
             resourceType: "setting",
             resourceId: params.id,
             details: { area: "email-template", name: input.name },
-          }).catch((e) => console.error("[email-templates] audit failed:", e));
+          }).catch((err) => getLogger("audit").event("audit.write.failed", { resource: "email_template", err }));
 
           const row = await load(params.id);
           return json({ success: true, data: toEmailTemplate(row as EmailTemplateRow) });
         } catch (error) {
-          console.error("[email-templates] update failed:", error);
+          recordFailure(error, "[email-templates] update failed:");
           return templateFailure("SERVER_ERROR", "Failed to update the template", 500);
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      DELETE: withApiHandler("/api/email-templates/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const who = await authorizeTemplates(request, "edit");
           if (who instanceof Response) return who;
@@ -109,13 +112,13 @@ export const Route = createFileRoute("/api/email-templates/$id")({
             resourceType: "setting",
             resourceId: params.id,
             details: { area: "email-template", name: row.name },
-          }).catch((e) => console.error("[email-templates] audit failed:", e));
+          }).catch((err) => getLogger("audit").event("audit.write.failed", { resource: "email_template", err }));
           return json({ success: true });
         } catch (error) {
-          console.error("[email-templates] delete failed:", error);
+          recordFailure(error, "[email-templates] delete failed:");
           return templateFailure("SERVER_ERROR", "Failed to delete the template", 500);
         }
-      },
+      }),
     },
   },
 });

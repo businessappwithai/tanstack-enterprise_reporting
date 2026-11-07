@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import {
   CopilotRuntime,
@@ -82,16 +83,16 @@ async function requireSession(request: Request): Promise<Response | null> {
 export const Route = createFileRoute("/api/copilotkit/")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/copilotkit/", async ({ request }) => {
         const refusal = await requireSession(request);
         if (refusal) return refusal;
         return getHandler().handleRequest(request);
-      },
-      POST: async ({ request }) => {
+      }),
+      POST: withApiHandler("/api/copilotkit/", async ({ request }) => {
         const refusal = await requireSession(request);
         if (refusal) return refusal;
         return getHandler().handleRequest(request);
-      },
+      }),
     },
   },
 });

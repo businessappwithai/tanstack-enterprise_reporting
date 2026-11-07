@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 import { activeFiltersCollection } from "@/lib/tanstack-db/collections";
 import type { ActiveFilter, CrossFilterConfig, WidgetFilterConfig } from "@/types/filters";
+import { getLogger } from "@/lib/logging/logger";
 
 interface UseCrossFilterReturn {
   activeFilters: ActiveFilter[];
@@ -99,7 +100,7 @@ export function useCrossFilterDB(config: CrossFilterConfig): UseCrossFilterRetur
         await activeFiltersCollection.insert(newFilter);
       }
     } catch (error) {
-      console.error("Failed to apply filter:", error);
+      getLogger("client").note("error", "Failed to apply filter:", { err: error });
     }
   };
 
@@ -110,7 +111,7 @@ export function useCrossFilterDB(config: CrossFilterConfig): UseCrossFilterRetur
     try {
       await activeFiltersCollection.delete(filterId);
     } catch (error) {
-      console.error("Failed to remove filter:", error);
+      getLogger("client").note("error", "Failed to remove filter:", { err: error });
     }
   };
 
@@ -126,7 +127,7 @@ export function useCrossFilterDB(config: CrossFilterConfig): UseCrossFilterRetur
         await activeFiltersCollection.delete(filter.id);
       }
     } catch (error) {
-      console.error("Failed to clear filters:", error);
+      getLogger("client").note("error", "Failed to clear filters:", { err: error });
     }
   };
 

@@ -11,6 +11,7 @@ import {
   chartsCollection,
   dashboardsCollection,
 } from "./collections";
+import { getLogger } from "@/lib/logging/logger";
 
 // Initialize all collections on mount to ensure they're ready
 export function TanStackDBWrapper({ children }: { children: React.ReactNode }) {
@@ -37,12 +38,12 @@ export function TanStackDBWrapper({ children }: { children: React.ReactNode }) {
         if (collection.preload && typeof collection.preload === "function") {
           // Wrap in try-catch to prevent sync errors from blocking UI
           Promise.resolve(collection.preload()).catch((error) => {
-            console.warn(`Preload failed for collection, continuing with local state:`, error);
+            getLogger("client").note("warn", `Preload failed for collection, continuing with local state:`, { err: error });
           });
         }
       } catch (error) {
         // Silently continue - local state will work fine
-        console.debug("Collection preload skipped:", error);
+        getLogger("client").note("debug", "Collection preload skipped:", { err: error });
       }
     });
   }, []);

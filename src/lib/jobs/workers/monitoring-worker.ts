@@ -27,6 +27,7 @@ import type {
   AlertRecipient,
   AlertChannel,
 } from "@/types/monitoring";
+import { getLogger } from "@/lib/logging/logger";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Internal helpers
@@ -219,9 +220,7 @@ export async function executeReportSQL(
     // Report definition missing or has no saved query — return empty rows so
     // threshold evaluation produces NO_DATA rather than crashing the pipeline.
     const executionMs = Date.now() - startTime;
-    console.warn(
-      `[monitoring-worker] Report definition ${rule.report_definition_id} has no associated saved query — producing NO_DATA`
-    );
+    getLogger("jobs").note("warn", `[monitoring-worker] Report definition ${rule.report_definition_id} has no associated saved query — producing NO_DATA`);
     return { rows: [], executionMs, sql: "" };
   }
 
@@ -234,9 +233,7 @@ export async function executeReportSQL(
 
   if (!savedQuery) {
     const executionMs = Date.now() - startTime;
-    console.warn(
-      `[monitoring-worker] Saved query ${reportDef.saved_query_id} not found — producing NO_DATA`
-    );
+    getLogger("jobs").note("warn", `[monitoring-worker] Saved query ${reportDef.saved_query_id} not found — producing NO_DATA`);
     return { rows: [], executionMs, sql: "" };
   }
 
@@ -272,7 +269,7 @@ export async function executeReportSQL(
     return { rows, executionMs, sql: sqlContent };
   } catch (error) {
     const executionMs = Date.now() - startTime;
-    console.error("[monitoring-worker] executeReportSQL failed:", error);
+    getLogger("jobs").note("error", "[monitoring-worker] executeReportSQL failed:", { err: error });
     // Return empty rows — evaluation will produce NO_DATA status
     return { rows: [], executionMs, sql: sqlContent };
   }
@@ -815,7 +812,7 @@ export async function executeMonitoringEvaluation(
       alertResults = await dispatchAlerts(rule, evaluation, executionId);
       alertDispatched = alertResults.some((r) => r.success);
     } catch (err) {
-      console.error("[monitoring-worker] dispatchAlerts failed:", err);
+      getLogger("jobs").note("error", "[monitoring-worker] dispatchAlerts failed:", { err: err });
     }
   }
 

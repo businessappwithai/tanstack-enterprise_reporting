@@ -42,12 +42,29 @@ export interface ChannelLogger {
   readonly channel: string;
   readonly level: ConfiguredLevel;
   event(id: EventId, fields?: LogFields): void;
+  /**
+   * A free-text line at a level, for code not yet given events of its own. The level is still
+   * the spec's to govern (`LOG_LEVEL_<CHANNEL>`) and the fields are still redacted; what it
+   * lacks is a stable id. Prefer `event`.
+   */
+  note(level: "debug" | "info" | "warn" | "error", what: string, fields?: LogFields): void;
   child(bindings: LogFields): ChannelLogger;
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Levels                                                                     */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * The environment, wherever this runs. A page imports the logger on both sides, and `process`
+ * does not exist in a browser: there the build mode stands in for NODE_ENV and
+ * `VITE_LOG_LEVEL` for LOG_LEVEL.
+ */
+function runtimeEnv(): NodeJS.ProcessEnv {
+  if (typeof process !== "undefined" && process.env) return process.env;
+  const meta = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {};
+  return { NODE_ENV: meta.MODE, LOG_LEVEL: meta.VITE_LOG_LEVEL } as NodeJS.ProcessEnv;
+}
 
 const isConfigured = (value: unknown): value is ConfiguredLevel =>
   value === "silent" || (typeof value === "string" && value in LEVELS);
@@ -66,7 +83,7 @@ const rank = (level: ConfiguredLevel): number =>
  * The level a channel logs at. `LOG_LEVEL_<CHANNEL>`, then `LOG_LEVEL`, then the
  * quieter of the environment's level and the channel's own.
  */
-export function resolveLevel(channel: string, env: NodeJS.ProcessEnv = process.env): ConfiguredLevel {
+export function resolveLevel(channel: string, env: NodeJS.ProcessEnv = runtimeEnv()): ConfiguredLevel {
   const perChannel = env[`LOG_LEVEL_${channel.toUpperCase()}`];
   if (isConfigured(perChannel)) return perChannel;
   const global = env.LOG_LEVEL;
@@ -107,15 +124,28 @@ const startedAt = Date.now();
 function getRoot(): PinoLogger {
   if (root) return root;
 
-  const profile = profileFor(process.env.NODE_ENV);
-  const pretty =
-    process.env.LOG_PRETTY === "true" ? true : process.env.LOG_PRETTY === "false" ? false : profile.pretty;
+  const env = runtimeEnv();
+
+  // In a browser: Pino's browser build, writing objects to the console. Warnings and errors
+  // are also sent to the server's bounded `/api/logs` so the System Logs screen sees them;
+  // see `transmitToServer`.
+  if (typeof window !== "undefined") {
+    root = pino({
+      level: "trace",
+      redact: { paths: [...REDACT_KEYS, ...REDACT_KEYS.map((k) => `*.${k}`)], censor: REDACT_CENSOR },
+      browser: { asObject: true, transmit: { level: "warn", send: transmitToServer } },
+    });
+    return root;
+  }
+
+  const profile = profileFor(env.NODE_ENV);
+  const pretty = env.LOG_PRETTY === "true" ? true : env.LOG_PRETTY === "false" ? false : profile.pretty;
 
   const options = {
     // The root sits at `trace` and each channel clamps itself above it; a root at
     // the environment's level would drop what LOG_LEVEL_<CHANNEL> asked to see.
     level: "trace",
-    base: { service: process.env.LOG_NAME ?? "enterprise-reporting" },
+    base: { service: env.LOG_NAME ?? "enterprise-reporting" },
     redact: { paths: [...REDACT_KEYS, ...REDACT_KEYS.map((k) => `*.${k}`)], censor: REDACT_CENSOR },
     timestamp: pino.stdTimeFunctions.isoTime,
     formatters: { level: (label: string) => ({ level: label }) },
@@ -126,10 +156,70 @@ function getRoot(): PinoLogger {
         ...options,
         transport: { target: "pino-pretty", options: { colorize: true, translateTime: "HH:MM:ss.l", ignore: "pid,hostname" } },
       })
-    : pino(options, pino.destination({ dest: 1, sync: process.env.NODE_ENV === "test" || process.env.LOG_SYNC === "true" }));
+    : pino(options, pino.destination({ dest: 1, sync: env.NODE_ENV === "test" || env.LOG_SYNC === "true" }));
 
   installProcessLogging();
   return root;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The browser reports to the server                                          */
+/* -------------------------------------------------------------------------- */
+
+const CLIENT_WINDOW_MS = 60_000;
+const CLIENT_MAX_PER_WINDOW = 20;
+let clientWindowStart = 0;
+let clientSent = 0;
+const clientRecent = new Map<string, number>();
+
+/**
+ * Pino's browser `transmit` hook: send a warning or error to `POST /api/logs`, the bounded route
+ * the System Logs screen reads. Fire and forget, never throws, never retries (a reporter that
+ * retries against a dead server is a loop), at most twenty a minute, and the same message at
+ * most once a minute — a component that fails on every render would otherwise post every frame.
+ */
+function transmitToServer(
+  level: string,
+  event: { messages: unknown[]; bindings: Array<Record<string, unknown>> }
+): void {
+  try {
+    if (typeof fetch === "undefined") return;
+    const now = Date.now();
+    const first = event.messages[0];
+    const message =
+      (typeof first === "string" ? first : (first as { msg?: string; what?: string } | undefined)?.what ??
+        (first as { msg?: string } | undefined)?.msg ?? "") || String(event.messages[1] ?? "");
+    if (!message) return;
+    const key = `${level}|${message}`;
+    const last = clientRecent.get(key);
+    if (last !== undefined && now - last < CLIENT_WINDOW_MS) return;
+    if (now - clientWindowStart >= CLIENT_WINDOW_MS) {
+      clientWindowStart = now;
+      clientSent = 0;
+    }
+    if (clientSent >= CLIENT_MAX_PER_WINDOW) return;
+    clientSent += 1;
+    clientRecent.set(key, now);
+    if (clientRecent.size > 200) clientRecent.clear();
+
+    const stack = (first as { stack?: unknown } | undefined)?.stack;
+    const channel = String(event.bindings.find((b) => typeof b?.channel === "string")?.channel ?? "client");
+    void fetch("/api/logs", {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        level: level === "fatal" ? "error" : level,
+        message: message.slice(0, 4000),
+        component: channel.replace(/[^\w.:/-]/g, "_").slice(0, 100) || "client",
+        metadata: { page: typeof location !== "undefined" ? location.pathname : undefined },
+        ...(typeof stack === "string" && { errorStack: stack.slice(0, 16 * 1024) }),
+      }),
+    }).catch(() => undefined);
+  } catch {
+    // The reporter failing must not be a second error.
+  }
 }
 
 function toStack(value: unknown): string | null {
@@ -165,21 +255,28 @@ function wrap(pinoLogger: PinoLogger, channel: string, level: ConfiguredLevel): 
         payload.err = new Error(typeof payload.err === "string" ? payload.err : JSON.stringify(redactFields(payload.err)));
       }
 
-      if (rank(level) <= LEVELS[declared.level]) pinoLogger[declared.level](payload, declared.message);
+      // A note's own sentence is its message; every other event's comes from the spec.
+      const message = id.startsWith("note.") && typeof payload.what === "string" ? payload.what : declared.message;
+      if (rank(level) <= LEVELS[declared.level]) pinoLogger[declared.level](payload, message);
 
       if (wantsSink(declared.level) && rank(level) <= LEVELS[declared.level]) {
         const { err, requestId, userId, ...rest } = payload as LogFields & { err?: unknown };
         enqueue({
           timestamp: new Date().toISOString(),
           level: declared.level,
-          message: declared.message,
+          message,
           component: channel,
           userId: (userId as string | null | undefined) ?? null,
           requestId: (requestId as string | null | undefined) ?? null,
           metadata: redactFields({ ...rest, event: id }) as Record<string, unknown>,
           errorStack: toStack(err),
+          category: typeof rest.errorCategory === "string" ? rest.errorCategory : null,
+          code: typeof rest.errorCode === "string" ? rest.errorCode : null,
         });
       }
+    },
+    note(noteLevel, what, fields = {}) {
+      this.event(`note.${noteLevel}` as EventId, { ...fields, what });
     },
     child(bindings) {
       return wrap(pinoLogger.child(bindings), channel, level);
@@ -220,6 +317,7 @@ let processInstalled = false;
  * signal — the server's own graceful shutdown comes first.
  */
 export function installProcessLogging(): void {
+  if (typeof window !== "undefined") return;
   if (processInstalled || typeof process === "undefined" || typeof process.on !== "function") return;
   processInstalled = true;
 

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import {
   refuseUnlessOwnerOrAdmin,
@@ -13,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/reports/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
+      GET: withApiHandler("/api/reports/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -44,15 +46,11 @@ export const Route = createFileRoute("/api/reports/$id")({
 
           return json({ success: true, data: report });
         } catch (error) {
-          console.error("Error fetching report:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to fetch report" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch report");
         }
-      },
+      }),
 
-      PUT: async ({ request, params }) => {
+      PUT: withApiHandler("/api/reports/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -147,15 +145,11 @@ export const Route = createFileRoute("/api/reports/$id")({
             .executeTakeFirst();
           return json({ success: true, data: report });
         } catch (error) {
-          console.error("Error updating report:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to update report" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update report");
         }
-      },
+      }),
 
-      PATCH: async ({ request, params }) => {
+      PATCH: withApiHandler("/api/reports/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -222,15 +216,11 @@ export const Route = createFileRoute("/api/reports/$id")({
             .executeTakeFirst();
           return json({ success: true, data: report });
         } catch (error) {
-          console.error("Error patching report:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to update report" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to update report");
         }
-      },
+      }),
 
-      DELETE: async ({ request, params }) => {
+      DELETE: withApiHandler("/api/reports/$id", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -272,13 +262,9 @@ export const Route = createFileRoute("/api/reports/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting report:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to delete report" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to delete report");
         }
-      },
+      }),
     },
   },
 });

@@ -1,5 +1,6 @@
 import { testConnection as testDatabaseConnection } from "@/lib/db/connection-manager";
 import type { DatabaseClientType } from "@/types/database";
+import { getLogger } from "@/lib/logging/logger";
 
 export interface ConnectionConfig {
   host?: string;
@@ -23,7 +24,7 @@ export class ConnectionTestService {
     const startTime = Date.now();
 
     if (!clientType?.trim()) {
-      console.warn(`[SERVICE:${serviceId}] Database type is required`);
+      getLogger("datasource").note("warn", `[SERVICE:${serviceId}] Database type is required`);
       return {
         connected: false,
         message: "Database type is required",
@@ -31,37 +32,33 @@ export class ConnectionTestService {
     }
 
     try {
-      console.log(`[SERVICE:${serviceId}] Starting connection test`);
-      console.log(`[SERVICE:${serviceId}] Client type: ${clientType}`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Starting connection test`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Client type: ${clientType}`);
 
       // First validate the config
-      console.log(`[SERVICE:${serviceId}] Step 1: Validating configuration...`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 1: Validating configuration...`);
       const validationResult = this.validateConfig(clientType, config);
       if (!validationResult.valid) {
         const duration = Date.now() - startTime;
-        console.warn(
-          `[SERVICE:${serviceId}] Config validation FAILED after ${duration}ms: ${validationResult.message}`
-        );
+        getLogger("datasource").note("warn", `[SERVICE:${serviceId}] Config validation FAILED after ${duration}ms: ${validationResult.message}`);
         return {
           connected: false,
           message: validationResult.message,
         };
       }
-      console.log(`[SERVICE:${serviceId}] Step 1: Config validation OK`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 1: Config validation OK`);
 
       // Then actually test the connection (real database connectivity)
-      console.log(`[SERVICE:${serviceId}] Step 2: Testing actual database connection...`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 2: Testing actual database connection...`);
       const result = await testDatabaseConnection(
         clientType.toLowerCase() as DatabaseClientType,
         config
       );
 
       const duration = Date.now() - startTime;
-      console.log(`[SERVICE:${serviceId}] Step 2: Connection test completed in ${duration}ms`);
-      console.log(
-        `[SERVICE:${serviceId}] Result: success=${result.success}, latency=${result.latency}ms`
-      );
-      console.log(`[SERVICE:${serviceId}] Message: ${result.message}`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Step 2: Connection test completed in ${duration}ms`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Result: success=${result.success}, latency=${result.latency}ms`);
+      getLogger("datasource").note("debug", `[SERVICE:${serviceId}] Message: ${result.message}`);
 
       return {
         connected: result.success,
@@ -74,11 +71,11 @@ export class ConnectionTestService {
       const errorCode = error instanceof Error ? (error as any).code : "UNKNOWN";
       const errorStack = error instanceof Error ? error.stack : "";
 
-      console.error(`[SERVICE:${serviceId}] EXCEPTION after ${duration}ms`);
-      console.error(`[SERVICE:${serviceId}] Error Code: ${errorCode}`);
-      console.error(`[SERVICE:${serviceId}] Error Message: ${message}`);
+      getLogger("datasource").note("error", `[SERVICE:${serviceId}] EXCEPTION after ${duration}ms`);
+      getLogger("datasource").note("error", `[SERVICE:${serviceId}] Error Code: ${errorCode}`);
+      getLogger("datasource").note("error", `[SERVICE:${serviceId}] Error Message: ${message}`);
       if (errorStack) {
-        console.error(`[SERVICE:${serviceId}] Stack Trace:\n${errorStack}`);
+        getLogger("datasource").note("error", `[SERVICE:${serviceId}] Stack Trace:\n${errorStack}`);
       }
 
       return {

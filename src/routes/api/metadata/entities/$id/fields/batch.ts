@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { refuseWithoutPermission } from "@/lib/permissions/resource-guard";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
@@ -14,7 +16,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/metadata/entities/$id/fields/batch")({
   server: {
     handlers: {
-      POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      POST: withApiHandler("/api/metadata/entities/$id/fields/batch", async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -65,15 +67,9 @@ export const Route = createFileRoute("/api/metadata/entities/$id/fields/batch")(
 
           return json({ success: true, data: results });
         } catch (error) {
-          console.error("[MetadataEntityFieldsBatch POST] Error:", error);
-          return json(
-            {
-              error: { message: error instanceof Error ? error.message : "Internal server error" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Internal server error");
         }
-      },
+      }),
     },
   },
 });

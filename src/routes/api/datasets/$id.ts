@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
 import {
@@ -15,7 +17,7 @@ function fail(status: number, code: string, message: string) {
 export const Route = createFileRoute("/api/datasets/$id")({
   server: {
     handlers: {
-      DELETE: async ({ request, params }) => {
+      DELETE: withApiHandler("/api/datasets/$id", async ({ request, params }) => {
         try {
           const session = await auth(request);
           if (!session?.user) return fail(401, "UNAUTHORIZED", "Not authenticated");
@@ -44,10 +46,10 @@ export const Route = createFileRoute("/api/datasets/$id")({
 
           return json({ success: true });
         } catch (error) {
-          console.error("Error deleting dataset:", error);
+          recordFailure(error, "Error deleting dataset:");
           return fail(500, "SERVER_ERROR", "Failed to delete dataset");
         }
-      },
+      }),
     },
   },
 });

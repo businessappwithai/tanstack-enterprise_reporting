@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import {
   refuseWithoutPermission,
@@ -14,7 +16,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/reports")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/reports", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -59,15 +61,11 @@ export const Route = createFileRoute("/api/reports")({
             },
           });
         } catch (error) {
-          console.error("Error fetching reports:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to fetch reports" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch reports");
         }
-      },
+      }),
 
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/reports", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -155,13 +153,9 @@ export const Route = createFileRoute("/api/reports")({
 
           return json({ success: true, data: report }, { status: 201 });
         } catch (error) {
-          console.error("Error creating report:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to create report" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to create report");
         }
-      },
+      }),
     },
   },
 });

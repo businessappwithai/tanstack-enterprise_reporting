@@ -5,6 +5,7 @@ import type { editor } from "monaco-editor";
 import { useTheme } from "next-themes";
 import { memo, useCallback, useEffect, useRef } from "react";
 import type { SchemaInfo } from "@/types/api";
+import { getLogger } from "@/lib/logging/logger";
 
 interface MonacoSQLEditorProps {
   value: string;
@@ -32,7 +33,7 @@ function MonacoSQLEditorComponent({
       editorRef.current = editor;
 
       // DEBUG: Log to verify this code runs
-      console.log("[Monaco Editor] Mounting - forcing editable mode");
+      getLogger("sql").note("debug", "[Monaco Editor] Mounting - forcing editable mode");
 
       // Force editor to be editable (ignore readOnly prop)
       editor.updateOptions({
@@ -95,20 +96,20 @@ function MonacoSQLEditorComponent({
       const textarea = document.querySelector(".monaco-editor textarea");
 
       if (monacoContainer && textarea) {
-        console.log("[Monaco Editor] Fixing z-index and input blocking...");
+        getLogger("sql").note("debug", "[Monaco Editor] Fixing z-index and input blocking...");
 
         // CRITICAL FIX: Bring textarea to front (z-index: -10 is wrong!)
         (textarea as HTMLTextAreaElement).style.zIndex = "1";
-        console.log("[Monaco Editor] Set textarea z-index to 1");
+        getLogger("sql").note("debug", "[Monaco Editor] Set textarea z-index to 1");
 
         // Remove readonly
         (textarea as HTMLTextAreaElement).readOnly = false;
         (textarea as HTMLTextAreaElement).removeAttribute("readonly");
-        console.log("[Monaco Editor] Removed readonly");
+        getLogger("sql").note("debug", "[Monaco Editor] Removed readonly");
 
         // Remove aria-hidden
         textarea.removeAttribute("aria-hidden");
-        console.log("[Monaco Editor] Removed aria-hidden");
+        getLogger("sql").note("debug", "[Monaco Editor] Removed aria-hidden");
 
         // Ensure pointer events are enabled
         const overflowGuard = monacoContainer.querySelector(".overflow-guard");
@@ -123,8 +124,8 @@ function MonacoSQLEditorComponent({
 
         // Focus the textarea
         (textarea as HTMLTextAreaElement).focus();
-        console.log("[Monaco Editor] Focused textarea");
-        console.log("[Monaco Editor] ✓ ALL FIXES APPLIED - TRY TYPING NOW!");
+        getLogger("sql").note("debug", "[Monaco Editor] Focused textarea");
+        getLogger("sql").note("debug", "[Monaco Editor] ✓ ALL FIXES APPLIED - TRY TYPING NOW!");
       }
     }, 300);
 

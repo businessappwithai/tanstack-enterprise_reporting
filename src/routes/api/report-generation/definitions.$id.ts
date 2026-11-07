@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { json } from "@/lib/server/response";
 import { refuseUnlessOwnerOrAdmin } from "@/lib/permissions/resource-guard";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
@@ -14,7 +15,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/report-generation/definitions/$id")({
   server: {
     handlers: {
-      GET: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      GET: withApiHandler("/api/report-generation/definitions/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         const session = await getSession(request);
         if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
 
@@ -40,9 +41,9 @@ export const Route = createFileRoute("/api/report-generation/definitions/$id")({
         }
 
         return json({ definition });
-      },
+      }),
 
-      PATCH: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      PATCH: withApiHandler("/api/report-generation/definitions/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         const session = await getSession(request);
         if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
 
@@ -113,9 +114,9 @@ export const Route = createFileRoute("/api/report-generation/definitions/$id")({
           .executeTakeFirst();
 
         return json({ definition: updated });
-      },
+      }),
 
-      DELETE: async ({ request, params }: { request: Request; params: { id: string } }) => {
+      DELETE: withApiHandler("/api/report-generation/definitions/$id", async ({ request, params }: { request: Request; params: { id: string } }) => {
         const session = await getSession(request);
         if (!session?.user) return json({ error: "Unauthorized" }, { status: 401 });
 
@@ -136,7 +137,7 @@ export const Route = createFileRoute("/api/report-generation/definitions/$id")({
         await (db as any).deleteFrom("nl_report_definitions").where("id", "=", id).execute();
 
         return json({ success: true });
-      },
+      }),
     },
   },
 });

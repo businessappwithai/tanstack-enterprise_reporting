@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/config";
 import { json } from "@/lib/server/response";
@@ -17,7 +19,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/logs/search")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/logs/search", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -111,19 +113,9 @@ export const Route = createFileRoute("/api/logs/search")({
             },
           });
         } catch (error) {
-          console.error("Log search failed:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                code: "ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Unknown error");
         }
-      },
+      }),
     },
   },
 });

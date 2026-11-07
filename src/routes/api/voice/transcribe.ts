@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { recordFailure } from "@/lib/logging/request-context";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import { transcribeAudio } from "@/lib/voice/qwen-asr";
 
 export const Route = createFileRoute("/api/voice/transcribe")({
   server: {
     handlers: {
-      POST: async ({ request }: { request: Request }) => {
+      POST: withApiHandler("/api/voice/transcribe", async ({ request }: { request: Request }) => {
         try {
           /*
            * Authenticated, which it was not.
@@ -49,13 +51,13 @@ export const Route = createFileRoute("/api/voice/transcribe")({
             headers: { "Content-Type": "application/json" },
           });
         } catch (error) {
-          console.error("[Transcribe] Error:", error);
+          recordFailure(error, "[Transcribe] Error:");
           return new Response(JSON.stringify({ error: "Internal server error" }), {
             status: 500,
             headers: { "Content-Type": "application/json" },
           });
         }
-      },
+      }),
     },
   },
 });

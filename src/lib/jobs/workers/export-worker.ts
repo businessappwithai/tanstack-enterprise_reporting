@@ -9,6 +9,7 @@ import { getConnection } from "@/lib/db/connection-manager";
 import { refuseJobQuery } from "@/lib/permissions/actor";
 import { JOB_OUTPUT_DIR } from "../output-dir";
 import type { ExportJobData, JobResult } from "../types";
+import { getLogger } from "@/lib/logging/logger";
 
 
 export async function processExportJob(data: ExportJobData): Promise<JobResult> {
@@ -79,7 +80,7 @@ export async function processExportJob(data: ExportJobData): Promise<JobResult> 
     };
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error("Export job failed:", error);
+    getLogger("jobs").note("error", "Export job failed:", { err: error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

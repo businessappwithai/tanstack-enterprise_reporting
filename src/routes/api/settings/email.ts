@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
 import { json } from "@/lib/server/response";
 import {
@@ -15,7 +17,7 @@ async function getSession(request: Request) {
 export const Route = createFileRoute("/api/settings/email")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: withApiHandler("/api/settings/email", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -50,18 +52,11 @@ export const Route = createFileRoute("/api/settings/email")({
             },
           });
         } catch (error) {
-          console.error("Error fetching email settings:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to fetch email settings" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch email settings");
         }
-      },
+      }),
 
-      POST: async ({ request }) => {
+      POST: withApiHandler("/api/settings/email", async ({ request }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -116,16 +111,9 @@ export const Route = createFileRoute("/api/settings/email")({
             { status: 400 }
           );
         } catch (error) {
-          console.error("Error processing email settings action:", error);
-          return json(
-            {
-              success: false,
-              error: { code: "SERVER_ERROR", message: "Failed to process request" },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to process request");
         }
-      },
+      }),
     },
   },
 });

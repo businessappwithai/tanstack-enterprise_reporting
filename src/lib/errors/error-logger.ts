@@ -1,3 +1,4 @@
+import { getLogger } from "@/lib/logging/logger";
 export interface ErrorLog {
   timestamp: string;
   errorMessage: string;
@@ -32,10 +33,14 @@ class ErrorLogger {
       this.logs = this.logs.slice(0, this.maxLogs);
     }
 
-    // Also log to console in development
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error logged:", errorLog);
-    }
+    // Told to the server as well as kept here. This used to log in development only, so in
+    // production a render error never left the browser: the first anyone heard of it was a
+    // person describing a blank page. A warning or above is sent to the bounded /api/logs
+    // route by the logger, and the System Logs screen shows it.
+    getLogger("client").note("error", `Render error: ${error.message}`, {
+      stack: error.stack,
+      url: errorLog.url,
+    });
 
     // Store in sessionStorage for persistence across page reloads
     try {

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql as kyselySql } from "kysely";
 import { json } from "@/lib/server/response";
 import { decideQueryRun } from "@/lib/permissions/runnable-query";
@@ -94,7 +96,7 @@ function buildFilename(
 export const Route = createFileRoute("/api/reports/$id/export")({
   server: {
     handlers: {
-      POST: async ({ request, params }) => {
+      POST: withApiHandler("/api/reports/$id/export", async ({ request, params }) => {
         try {
           const session = await getSession(request);
           if (!session?.user) {
@@ -714,13 +716,9 @@ export const Route = createFileRoute("/api/reports/$id/export")({
             { status: 400 }
           );
         } catch (error) {
-          console.error("Error exporting report:", error);
-          return json(
-            { success: false, error: { code: "SERVER_ERROR", message: "Failed to export report" } },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to export report");
         }
-      },
+      }),
     },
   },
 });

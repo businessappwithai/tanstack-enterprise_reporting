@@ -11,6 +11,7 @@ import { sendEmail } from "@/lib/email/email-service";
 import { logAudit } from "@/lib/security/audit";
 import { JOB_OUTPUT_DIR } from "../output-dir";
 import type { EmailBatchJobData, JobResult } from "../types";
+import { getLogger } from "@/lib/logging/logger";
 
 
 export async function processEmailBatchJob(data: EmailBatchJobData): Promise<JobResult> {
@@ -31,7 +32,7 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
 
   try {
     // === STAGE 1: Generate Report Attachment ===
-    console.info("[email-batch]", "Generating report attachment...");
+    getLogger("jobs").note("info", "[email-batch]", { detail: ["Generating report attachment..."] });
 
     const db = getDb();
 
@@ -78,7 +79,7 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
       reportRows = reportResult.rows;
     }
 
-    console.info("[email-batch]", `Generated ${reportRows.length} rows for report`);
+    getLogger("jobs").note("info", "[email-batch]", { detail: [`Generated ${reportRows.length} rows for report`] });
 
     // Ensure output directory exists
     await fs.mkdir(JOB_OUTPUT_DIR, { recursive: true });
@@ -102,10 +103,10 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
         throw new Error(`Unsupported format: ${format}`);
     }
 
-    console.info("[email-batch]", `Report attachment created: ${filename}`);
+    getLogger("jobs").note("info", "[email-batch]", { detail: [`Report attachment created: ${filename}`] });
 
     // === STAGE 2: Fetch Email Template ===
-    console.info("[email-batch]", "Fetching email template...");
+    getLogger("jobs").note("info", "[email-batch]", { detail: ["Fetching email template..."] });
 
     const template = await db
       .selectFrom("email_templates")
@@ -121,7 +122,7 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
     const columnMappings = template.column_mappings ? JSON.parse(template.column_mappings) : {};
 
     // === STAGE 3: Fetch Recipients ===
-    console.info("[email-batch]", "Fetching recipient list...");
+    getLogger("jobs").note("info", "[email-batch]", { detail: ["Fetching recipient list..."] });
 
     const recipientQuery = await db
       .selectFrom("saved_queries")
@@ -165,11 +166,11 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
     }
 
     if (recipientRows.length === 0) {
-      console.info("[email-batch]", "WARNING: No recipients found");
+      getLogger("jobs").note("info", "[email-batch]", { detail: ["WARNING: No recipients found"] });
       throw new Error("No recipients found from recipient query");
     }
 
-    console.info("[email-batch]", `Found ${recipientRows.length} recipients`);
+    getLogger("jobs").note("info", "[email-batch]", { detail: [`Found ${recipientRows.length} recipients`] });
 
     // Validate email column exists
     if (!recipientRows[0][recipientEmailColumn]) {
@@ -179,7 +180,7 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
     }
 
     // === STAGE 4: Send Batch Emails ===
-    console.info("[email-batch]", "Starting batch email send...");
+    getLogger("jobs").note("info", "[email-batch]", { detail: ["Starting batch email send..."] });
 
     const failedRecipients: Array<{ email: string; error: string }> = [];
 
@@ -187,10 +188,7 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
       const recipient = recipientRows[i];
       const recipientEmail = String(recipient[recipientEmailColumn]);
 
-      console.info(
-        "[email-batch]",
-        `Sending email ${i + 1}/${recipientRows.length} to ${recipientEmail}`
-      );
+      getLogger("jobs").note("info", "[email-batch]", { detail: [`Sending email ${i + 1}/${recipientRows.length} to ${recipientEmail}`] });
 
       try {
         // Apply column mappings to get variables for template
@@ -224,18 +222,15 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
 
         if (result.success) {
           emailsSent++;
-          console.info(
-            "[email-batch]",
-            `✓ Email sent to ${recipientEmail} (Message ID: ${result.messageId})`
-          );
+          getLogger("jobs").note("info", "[email-batch]", { detail: [`✓ Email sent to ${recipientEmail} (Message ID: ${result.messageId})`] });
         } else {
           failedRecipients.push({ email: recipientEmail, error: result.error || "Unknown error" });
-          console.info("[email-batch]", `✗ Failed to send to ${recipientEmail}: ${result.error}`);
+          getLogger("jobs").note("info", "[email-batch]", { detail: [`✗ Failed to send to ${recipientEmail}: ${result.error}`] });
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error";
         failedRecipients.push({ email: recipientEmail, error: errorMsg });
-        console.info("[email-batch]", `✗ Error sending to ${recipientEmail}: ${errorMsg}`);
+        getLogger("jobs").note("info", "[email-batch]", { detail: [`✗ Error sending to ${recipientEmail}: ${errorMsg}`] });
       }
     }
 
@@ -255,10 +250,7 @@ export async function processEmailBatchJob(data: EmailBatchJobData): Promise<Job
     });
 
     if (failedRecipients.length > 0) {
-      console.info(
-        "[email-batch]",
-        `Batch completed with ${failedRecipients.length} failures: ${JSON.stringify(failedRecipients)}`
-      );
+      getLogger("jobs").note("info", "[email-batch]", { detail: [`Batch completed with ${failedRecipients.length} failures: ${JSON.stringify(failedRecipients)}`] });
     }
 
     return {

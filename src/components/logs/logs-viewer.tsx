@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -27,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getLogger } from "@/lib/logging/logger";
 
 interface Log {
   id: string;
@@ -47,11 +49,13 @@ export function LogsViewer() {
   const [levelFilter, setLevelFilter] = useState<string | null>(null);
   const [componentFilter, setComponentFilter] = useState<string | null>(null);
   const [userFilter, setUserFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [requestIdFilter, setRequestIdFilter] = useState("");
   const [users, setUsers] = useState<Array<{ id: string; email: string }>>([]);
   const [components, setComponents] = useState<string[]>([]);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["logs", page, levelFilter, componentFilter, userFilter],
+    queryKey: ["logs", page, levelFilter, componentFilter, userFilter, categoryFilter, requestIdFilter],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: PAGE_SIZE.toString(),
@@ -61,6 +65,8 @@ export function LogsViewer() {
       if (levelFilter) params.append("level", levelFilter);
       if (componentFilter) params.append("component", componentFilter);
       if (userFilter) params.append("userId", userFilter);
+      if (categoryFilter) params.append("category", categoryFilter);
+      if (requestIdFilter.trim()) params.append("requestId", requestIdFilter.trim());
 
       const res = await fetch(`/api/logs?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load logs`);
@@ -88,7 +94,7 @@ export function LogsViewer() {
           setComponents(data.data || []);
         }
       } catch (error) {
-        console.error("Failed to fetch filters:", error);
+        getLogger("client").note("error", "Failed to fetch filters:", { err: error });
       }
     };
     fetchFilters();
@@ -146,6 +152,50 @@ export function LogsViewer() {
             <SelectItem value="debug">Debug</SelectItem>
           </SelectContent>
         </Select>
+
+        <Select
+          value={categoryFilter || "all"}
+          onValueChange={(v) => {
+            setCategoryFilter(v === "all" ? null : v);
+            setPage(0);
+          }}
+        >
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Filter by kind" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All kinds</SelectItem>
+            {[
+              "validation",
+              "authentication",
+              "authorization",
+              "not_found",
+              "conflict",
+              "business_rule",
+              "workflow",
+              "rate_limit",
+              "integration",
+              "database",
+              "configuration",
+              "internal",
+            ].map((category) => (
+              <SelectItem key={category} value={category}>
+                {category.replace("_", " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Input
+          className="w-64"
+          placeholder="Reference from an error"
+          aria-label="Find a request by its reference"
+          value={requestIdFilter}
+          onChange={(e) => {
+            setRequestIdFilter(e.target.value);
+            setPage(0);
+          }}
+        />
 
         {components.length > 0 && (
           <Select

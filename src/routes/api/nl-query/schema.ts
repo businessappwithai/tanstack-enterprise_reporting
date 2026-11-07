@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLogger } from "@/lib/logging/logger";
+import { serverFailure } from "@/lib/errors/app-error";
+import { withApiHandler } from "@/lib/http/with-api-handler";
 import { sql } from "kysely";
 import { json } from "@/lib/server/response";
 import { readSessionToken, verifySession } from "@/lib/auth/session";
@@ -96,7 +99,7 @@ async function fetchSchema(request: Request) {
     columns,
   }));
   storeSchemaEmbeddings(connection, dataSourceId, tablesForEmbedding, sampleData).catch((e) =>
-    console.warn("[Schema] Failed to store schema embeddings:", e)
+    getLogger("nlquery").event("nlquery.embedding.store_failed", { target: "schema", err: e })
   );
 
   const tablesList: { name: string; columns: string[] }[] = [];
@@ -154,38 +157,20 @@ async function fetchSchema(request: Request) {
 export const Route = createFileRoute("/api/nl-query/schema")({
   server: {
     handlers: {
-      GET: async ({ request }: { request: Request }) => {
+      GET: withApiHandler("/api/nl-query/schema", async ({ request }: { request: Request }) => {
         try {
           return await fetchSchema(request);
         } catch (error) {
-          console.error("Schema fetch error:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                message: error instanceof Error ? error.message : "Failed to fetch schema",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch schema");
         }
-      },
-      POST: async ({ request }: { request: Request }) => {
+      }),
+      POST: withApiHandler("/api/nl-query/schema", async ({ request }: { request: Request }) => {
         try {
           return await fetchSchema(request);
         } catch (error) {
-          console.error("Schema fetch error:", error);
-          return json(
-            {
-              success: false,
-              error: {
-                message: error instanceof Error ? error.message : "Failed to fetch schema",
-              },
-            },
-            { status: 500 }
-          );
+          throw serverFailure(error, "Failed to fetch schema");
         }
-      },
+      }),
     },
   },
 });
