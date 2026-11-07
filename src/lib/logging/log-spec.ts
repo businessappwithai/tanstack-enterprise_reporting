@@ -378,6 +378,12 @@ export const EVENTS = {
     message: "Log level changed",
     fields: ["channel", "from", "to", "by"],
   },
+  "logging.overrides.unavailable": {
+    channel: "logging",
+    level: "warn",
+    message: "Stored log levels could not be read or written",
+    fields: ["err"],
+  },
   "logging.sink.dropped": {
     channel: "logging",
     level: "warn",

@@ -350,6 +350,16 @@ export interface ChannelLevelReport {
   declared: string;
   effective: string;
   overridden: boolean;
+  /** True when the override is also stored in the database and so survives a restart. */
+  persisted: boolean;
+}
+
+/** Channels whose override is also stored in the database. */
+const persisted = new Set<string>();
+
+export function markPersisted(channel: string, isPersisted: boolean): void {
+  if (isPersisted) persisted.add(channel);
+  else persisted.delete(channel);
 }
 
 export interface LevelChange {
@@ -373,6 +383,7 @@ export function getChannelLevels(): ChannelLevelReport[] {
     declared: CHANNELS[channel],
     effective: String(getLogger(channel).level),
     overridden: overrides.has(channel),
+    persisted: persisted.has(channel),
   }));
 }
 
@@ -383,6 +394,29 @@ export function setChannelLevel(channel: Channel, level: ConfiguredLevel): Level
   if (child) child.level = level;
   overrides.set(channel, level);
   return { channel, from, to: level };
+}
+
+/**
+ * Make the stored overrides the ones in force. A channel that was stored and no longer is goes
+ * back to its configured level (another instance reset it); an override that was only ever in
+ * memory is left alone.
+ */
+export function applyStoredLevels(rows: Array<{ channel: string; level: string }>): void {
+  const stored = new Map<string, ConfiguredLevel>();
+  for (const row of rows) {
+    if (isChannel(row.channel) && isConfigured(row.level)) stored.set(row.channel, row.level);
+  }
+  for (const channel of [...persisted]) {
+    if (!stored.has(channel) && isChannel(channel)) {
+      resetChannelLevel(channel);
+      persisted.delete(channel);
+    }
+  }
+  for (const [channel, level] of stored) {
+    if (!isChannel(channel)) continue;
+    if (overrides.get(channel) !== level) setChannelLevel(channel as Channel, level);
+    persisted.add(channel);
+  }
 }
 
 /** Back to what the spec and the environment say. */
@@ -511,5 +545,6 @@ export function resetLoggerForTesting(): void {
   cache.clear();
   channelChildren.clear();
   overrides.clear();
+  persisted.clear();
   processInstalled = false;
 }

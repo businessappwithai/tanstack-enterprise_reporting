@@ -8,6 +8,7 @@ import type { DatabaseClientType } from "@/types/database";
 import { Pool as PostgresPool } from "pg";
 import { bootstrapSchema } from "./bootstrap";
 import { setSinkWriter } from "@/lib/logging/db-sink";
+import { startLevelSync } from "@/lib/logging/level-store";
 import { getLogger } from "@/lib/logging/logger";
 
 export interface Database {
@@ -24,6 +25,7 @@ export interface Database {
   job_executions: JobExecutionsTable;
   audit_log: AuditLogTable;
   logs: LogsTable;
+  log_level_overrides: LogLevelOverridesTable;
   email_templates: EmailTemplatesTable;
   resource_permissions: ResourcePermissionsTable;
   datasets: DatasetsTable;
@@ -287,6 +289,13 @@ export interface AuditLogTable {
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
+}
+
+export interface LogLevelOverridesTable {
+  channel: string;
+  level: string;
+  updated_by: string | null;
+  updated_at?: string;
 }
 
 export interface LogsTable {
@@ -688,7 +697,11 @@ export function getDb(): KyselyDB {
     db = initializeDatabase();
 
     bootstrapPromise = bootstrapOnce(db)
-      .then(() => getLogger("db").event("db.core.trace", { what: "Database ready" }))
+      .then(() => {
+        getLogger("db").event("db.core.trace", { what: "Database ready" });
+        // Log levels an administrator kept across restarts, now and every half minute.
+        startLevelSync(db as KyselyDB);
+      })
       .catch((err) => getLogger("db").event("db.core.failed", { what: "Bootstrap failed", err: err }));
 
     // internal bootstrap tracking
