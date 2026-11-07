@@ -303,6 +303,12 @@ export const EVENTS = {
     fields: ["target", "err"],
   },
   "jobs.schedule.failed": { channel: "jobs", level: "warn", message: "Schedule could not be created", fields: ["target", "err"] },
+  "logging.level.changed": {
+    channel: "logging",
+    level: "warn",
+    message: "Log level changed",
+    fields: ["channel", "from", "to", "by"],
+  },
   "logging.sink.dropped": {
     channel: "logging",
     level: "warn",

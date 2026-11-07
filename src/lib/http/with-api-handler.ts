@@ -26,6 +26,7 @@ import { categoryForStatus, classify } from "@/lib/errors/app-error";
 import { getLogger } from "@/lib/logging/logger";
 import { ERROR_CATEGORIES } from "@/lib/logging/log-spec";
 import { acceptRequestId, type RequestContext, runWithRequestContext } from "@/lib/logging/request-context";
+import { parseTraceparent } from "@/lib/logging/trace-context";
 import { json } from "@/lib/server/response";
 
 const SLOW_MS = Number(process.env.HTTP_SLOW_REQUEST_MS ?? 5000);
@@ -73,7 +74,14 @@ export function withApiHandler<C extends { request: Request } = any>(
     const log = getLogger("http");
     const base = { method: request.method, path: route, requestId };
 
-    const requestContext: RequestContext = { requestId, route, userId: null };
+    // The caller's trace, when it sent one, so these lines can be found from the trace.
+    const trace = parseTraceparent(request.headers.get("traceparent"));
+    const requestContext: RequestContext = {
+      requestId,
+      route,
+      userId: null,
+      ...(trace && { traceId: trace.traceId, spanId: trace.spanId }),
+    };
     return runWithRequestContext(requestContext, async () => {
       let response: Response;
       let thrown: unknown;

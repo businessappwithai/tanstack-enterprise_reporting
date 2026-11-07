@@ -96,6 +96,7 @@ import { Route as ApiAdkAnalyzeIntentRouteImport } from './routes/api/adk/analyz
 import { Route as AuthedSettingsUiRouteImport } from './routes/_authed/settings/ui'
 import { Route as AuthedSettingsDesignSystemRouteImport } from './routes/_authed/settings/design-system'
 import { Route as AuthedMonitoringCreateRouteImport } from './routes/_authed/monitoring/create'
+import { Route as ApiAdminLogLevelsIndexRouteImport } from './routes/api/admin/log-levels/index'
 import { Route as AuthedSettingsEmailIndexRouteImport } from './routes/_authed/settings/email/index'
 import { Route as AuthedReportsGenerateIndexRouteImport } from './routes/_authed/reports/generate/index'
 import { Route as AuthedMetadataEntitiesIndexRouteImport } from './routes/_authed/metadata/entities/index'
@@ -126,6 +127,7 @@ import { Route as ApiDataSourcesIdEntitiesRouteImport } from './routes/api/data-
 import { Route as ApiDashboardsIdWidgetsRouteImport } from './routes/api/dashboards/$id/widgets'
 import { Route as ApiChartsIdFiltersRouteImport } from './routes/api/charts/$id/filters'
 import { Route as ApiChartsIdDataRouteImport } from './routes/api/charts/$id/data'
+import { Route as ApiAdminLogLevelsChannelRouteImport } from './routes/api/admin/log-levels/$channel'
 import { Route as AuthedReportsIdViewerRouteImport } from './routes/_authed/reports/$id/viewer'
 import { Route as AuthedReportsIdEditorRouteImport } from './routes/_authed/reports/$id/editor'
 import { Route as AuthedDataSourcesIdPermissionsRouteImport } from './routes/_authed/data-sources/$id/permissions'
@@ -578,6 +580,11 @@ const AuthedMonitoringCreateRoute = AuthedMonitoringCreateRouteImport.update({
   path: '/monitoring/create',
   getParentRoute: () => AuthedRoute,
 } as any)
+const ApiAdminLogLevelsIndexRoute = ApiAdminLogLevelsIndexRouteImport.update({
+  id: '/api/admin/log-levels/',
+  path: '/api/admin/log-levels/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedSettingsEmailIndexRoute =
   AuthedSettingsEmailIndexRouteImport.update({
     id: '/settings/email/',
@@ -741,6 +748,12 @@ const ApiChartsIdDataRoute = ApiChartsIdDataRouteImport.update({
   path: '/data',
   getParentRoute: () => ApiChartsIdRoute,
 } as any)
+const ApiAdminLogLevelsChannelRoute =
+  ApiAdminLogLevelsChannelRouteImport.update({
+    id: '/api/admin/log-levels/$channel',
+    path: '/api/admin/log-levels/$channel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthedReportsIdViewerRoute = AuthedReportsIdViewerRouteImport.update({
   id: '/reports/$id/viewer',
   path: '/reports/$id/viewer',
@@ -908,6 +921,7 @@ export interface FileRoutesByFullPath {
   '/data-sources/$id/permissions': typeof AuthedDataSourcesIdPermissionsRoute
   '/reports/$id/editor': typeof AuthedReportsIdEditorRoute
   '/reports/$id/viewer': typeof AuthedReportsIdViewerRoute
+  '/api/admin/log-levels/$channel': typeof ApiAdminLogLevelsChannelRoute
   '/api/charts/$id/data': typeof ApiChartsIdDataRoute
   '/api/charts/$id/filters': typeof ApiChartsIdFiltersRoute
   '/api/dashboards/$id/widgets': typeof ApiDashboardsIdWidgetsRouteWithChildren
@@ -938,6 +952,7 @@ export interface FileRoutesByFullPath {
   '/metadata/entities/': typeof AuthedMetadataEntitiesIndexRoute
   '/reports/generate/': typeof AuthedReportsGenerateIndexRoute
   '/settings/email/': typeof AuthedSettingsEmailIndexRoute
+  '/api/admin/log-levels/': typeof ApiAdminLogLevelsIndexRoute
   '/api/dashboards/$id/widgets/$widgetId': typeof ApiDashboardsIdWidgetsWidgetIdRoute
   '/api/data-sources/$id/roles/$roleId': typeof ApiDataSourcesIdRolesRoleIdRoute
   '/api/metadata/entities/$id/fields': typeof ApiMetadataEntitiesIdFieldsRouteWithChildren
@@ -1039,6 +1054,7 @@ export interface FileRoutesByTo {
   '/data-sources/$id/permissions': typeof AuthedDataSourcesIdPermissionsRoute
   '/reports/$id/editor': typeof AuthedReportsIdEditorRoute
   '/reports/$id/viewer': typeof AuthedReportsIdViewerRoute
+  '/api/admin/log-levels/$channel': typeof ApiAdminLogLevelsChannelRoute
   '/api/charts/$id/data': typeof ApiChartsIdDataRoute
   '/api/charts/$id/filters': typeof ApiChartsIdFiltersRoute
   '/api/dashboards/$id/widgets': typeof ApiDashboardsIdWidgetsRouteWithChildren
@@ -1069,6 +1085,7 @@ export interface FileRoutesByTo {
   '/metadata/entities': typeof AuthedMetadataEntitiesIndexRoute
   '/reports/generate': typeof AuthedReportsGenerateIndexRoute
   '/settings/email': typeof AuthedSettingsEmailIndexRoute
+  '/api/admin/log-levels': typeof ApiAdminLogLevelsIndexRoute
   '/api/dashboards/$id/widgets/$widgetId': typeof ApiDashboardsIdWidgetsWidgetIdRoute
   '/api/data-sources/$id/roles/$roleId': typeof ApiDataSourcesIdRolesRoleIdRoute
   '/api/metadata/entities/$id/fields': typeof ApiMetadataEntitiesIdFieldsRouteWithChildren
@@ -1172,6 +1189,7 @@ export interface FileRoutesById {
   '/_authed/data-sources/$id/permissions': typeof AuthedDataSourcesIdPermissionsRoute
   '/_authed/reports/$id/editor': typeof AuthedReportsIdEditorRoute
   '/_authed/reports/$id/viewer': typeof AuthedReportsIdViewerRoute
+  '/api/admin/log-levels/$channel': typeof ApiAdminLogLevelsChannelRoute
   '/api/charts/$id/data': typeof ApiChartsIdDataRoute
   '/api/charts/$id/filters': typeof ApiChartsIdFiltersRoute
   '/api/dashboards/$id/widgets': typeof ApiDashboardsIdWidgetsRouteWithChildren
@@ -1202,6 +1220,7 @@ export interface FileRoutesById {
   '/_authed/metadata/entities/': typeof AuthedMetadataEntitiesIndexRoute
   '/_authed/reports/generate/': typeof AuthedReportsGenerateIndexRoute
   '/_authed/settings/email/': typeof AuthedSettingsEmailIndexRoute
+  '/api/admin/log-levels/': typeof ApiAdminLogLevelsIndexRoute
   '/api/dashboards/$id/widgets/$widgetId': typeof ApiDashboardsIdWidgetsWidgetIdRoute
   '/api/data-sources/$id/roles/$roleId': typeof ApiDataSourcesIdRolesRoleIdRoute
   '/api/metadata/entities/$id/fields': typeof ApiMetadataEntitiesIdFieldsRouteWithChildren
@@ -1305,6 +1324,7 @@ export interface FileRouteTypes {
     | '/data-sources/$id/permissions'
     | '/reports/$id/editor'
     | '/reports/$id/viewer'
+    | '/api/admin/log-levels/$channel'
     | '/api/charts/$id/data'
     | '/api/charts/$id/filters'
     | '/api/dashboards/$id/widgets'
@@ -1335,6 +1355,7 @@ export interface FileRouteTypes {
     | '/metadata/entities/'
     | '/reports/generate/'
     | '/settings/email/'
+    | '/api/admin/log-levels/'
     | '/api/dashboards/$id/widgets/$widgetId'
     | '/api/data-sources/$id/roles/$roleId'
     | '/api/metadata/entities/$id/fields'
@@ -1436,6 +1457,7 @@ export interface FileRouteTypes {
     | '/data-sources/$id/permissions'
     | '/reports/$id/editor'
     | '/reports/$id/viewer'
+    | '/api/admin/log-levels/$channel'
     | '/api/charts/$id/data'
     | '/api/charts/$id/filters'
     | '/api/dashboards/$id/widgets'
@@ -1466,6 +1488,7 @@ export interface FileRouteTypes {
     | '/metadata/entities'
     | '/reports/generate'
     | '/settings/email'
+    | '/api/admin/log-levels'
     | '/api/dashboards/$id/widgets/$widgetId'
     | '/api/data-sources/$id/roles/$roleId'
     | '/api/metadata/entities/$id/fields'
@@ -1568,6 +1591,7 @@ export interface FileRouteTypes {
     | '/_authed/data-sources/$id/permissions'
     | '/_authed/reports/$id/editor'
     | '/_authed/reports/$id/viewer'
+    | '/api/admin/log-levels/$channel'
     | '/api/charts/$id/data'
     | '/api/charts/$id/filters'
     | '/api/dashboards/$id/widgets'
@@ -1598,6 +1622,7 @@ export interface FileRouteTypes {
     | '/_authed/metadata/entities/'
     | '/_authed/reports/generate/'
     | '/_authed/settings/email/'
+    | '/api/admin/log-levels/'
     | '/api/dashboards/$id/widgets/$widgetId'
     | '/api/data-sources/$id/roles/$roleId'
     | '/api/metadata/entities/$id/fields'
@@ -1664,8 +1689,10 @@ export interface RootRouteChildren {
   ApiDatasetsIndexRoute: typeof ApiDatasetsIndexRoute
   ApiEmailTemplatesIndexRoute: typeof ApiEmailTemplatesIndexRoute
   ApiLogsIndexRoute: typeof ApiLogsIndexRoute
+  ApiAdminLogLevelsChannelRoute: typeof ApiAdminLogLevelsChannelRoute
   ApiReportGenerationArtifactsIdRoute: typeof ApiReportGenerationArtifactsIdRoute
   ApiSqlSchemaDataSourceIdRoute: typeof ApiSqlSchemaDataSourceIdRoute
+  ApiAdminLogLevelsIndexRoute: typeof ApiAdminLogLevelsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2279,6 +2306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedMonitoringCreateRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/api/admin/log-levels/': {
+      id: '/api/admin/log-levels/'
+      path: '/api/admin/log-levels'
+      fullPath: '/api/admin/log-levels/'
+      preLoaderRoute: typeof ApiAdminLogLevelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/settings/email/': {
       id: '/_authed/settings/email/'
       path: '/settings/email'
@@ -2488,6 +2522,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/charts/$id/data'
       preLoaderRoute: typeof ApiChartsIdDataRouteImport
       parentRoute: typeof ApiChartsIdRoute
+    }
+    '/api/admin/log-levels/$channel': {
+      id: '/api/admin/log-levels/$channel'
+      path: '/api/admin/log-levels/$channel'
+      fullPath: '/api/admin/log-levels/$channel'
+      preLoaderRoute: typeof ApiAdminLogLevelsChannelRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authed/reports/$id/viewer': {
       id: '/_authed/reports/$id/viewer'
@@ -3002,8 +3043,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDatasetsIndexRoute: ApiDatasetsIndexRoute,
   ApiEmailTemplatesIndexRoute: ApiEmailTemplatesIndexRoute,
   ApiLogsIndexRoute: ApiLogsIndexRoute,
+  ApiAdminLogLevelsChannelRoute: ApiAdminLogLevelsChannelRoute,
   ApiReportGenerationArtifactsIdRoute: ApiReportGenerationArtifactsIdRoute,
   ApiSqlSchemaDataSourceIdRoute: ApiSqlSchemaDataSourceIdRoute,
+  ApiAdminLogLevelsIndexRoute: ApiAdminLogLevelsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
