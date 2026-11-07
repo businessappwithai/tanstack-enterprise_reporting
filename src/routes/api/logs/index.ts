@@ -4,6 +4,7 @@ import { withApiHandler } from "@/lib/http/with-api-handler";
 import { auth } from "@/lib/auth/config";
 import { getDb } from "@/lib/db/config";
 import { allowClientLog, clientLogSchema, withClientSource } from "@/lib/logging/client-log";
+import { applyScope, scopeFor, shapeForViewer } from "@/lib/logging/log-access";
 import { json } from "@/lib/server/response";
 import { refuseWithoutPermission } from "@/lib/permissions/resource-guard";
 import { sqlEditorConfig, validatePageSize } from "@/lib/config/pagination";
@@ -117,14 +118,15 @@ export const Route = createFileRoute("/api/logs/")({
           const sessionRoles: string[] = (session.user as any).roles ?? [];
           const isAdmin = sessionRoles.some((r) => r.toLowerCase().includes("admin"));
 
-          // Non-admins can only see their own logs
-          const filterByUserId = userId && isAdmin ? userId : session.user.id;
+          // What this viewer may read: an administrator everything, anyone else their own rows,
+          // the system's warnings and errors, and a request whose reference they hold. See
+          // lib/logging/log-access.ts.
+          const viewer = { id: session.user.id, isAdmin };
+          const scope = scopeFor(viewer, { userId, requestId });
+          const filterByUserId = session.user.id;
 
-          // ── 1. application logs (SQL editor executions) ──────────────────────
-          let query = db.selectFrom("logs").selectAll();
-          // An administrator looking a request up by its reference sees it whoever made it:
-          // the reference is what a person reads out of an error, and it is not guessable.
-          if (!(requestId && isAdmin)) query = query.where("user_id", "=", filterByUserId as any);
+          // ── 1. application logs ──────────────────────────────────────────────
+          let query = applyScope(db.selectFrom("logs").selectAll(), scope);
 
           if (level && level !== "info") {
             query = query.where("level", "=", level);
@@ -144,10 +146,11 @@ export const Route = createFileRoute("/api/logs/")({
             .execute();
 
           // ── 2. audit log entries (resource create/update/delete) ─────────────
-          let auditQuery = db
-            .selectFrom("audit_log")
-            .selectAll()
-            .where("user_id", "=", filterByUserId as any);
+          // Audit rows hold what a person did to a record. An ordinary user sees theirs; an
+          // administrator sees everyone's, or one person's when they pick one.
+          let auditQuery = db.selectFrom("audit_log").selectAll();
+          if (!isAdmin) auditQuery = auditQuery.where("user_id", "=", filterByUserId as any);
+          else if (userId) auditQuery = auditQuery.where("user_id", "=", userId as any);
 
           if (component) {
             auditQuery = auditQuery.where("resource_type", "=", component as any);
@@ -189,7 +192,7 @@ export const Route = createFileRoute("/api/logs/")({
           const userCache = new Map<string, string>();
           const logsWithEmail = await Promise.all(
             merged.map(async (log) => {
-              if (!log.user_id) return { ...log, user_email: "system" };
+              if (!log.user_id) return shapeForViewer(viewer, { ...log, user_email: "system" });
               const uid = String(log.user_id);
               if (!userCache.has(uid)) {
                 const user = await db
@@ -199,7 +202,7 @@ export const Route = createFileRoute("/api/logs/")({
                   .executeTakeFirst();
                 userCache.set(uid, user?.email ?? "unknown");
               }
-              return { ...log, user_email: userCache.get(uid) ?? "unknown" };
+              return shapeForViewer(viewer, { ...log, user_email: userCache.get(uid) ?? "unknown" });
             })
           );
 

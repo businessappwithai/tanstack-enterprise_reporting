@@ -133,6 +133,10 @@ export function LogsViewer() {
   return (
     <div className="space-y-4">
       {/* Filters */}
+      <p className="text-xs text-muted-foreground">
+        You see your own entries and the system&apos;s warnings and errors. Entering a reference
+        from an error shows what became of that request. Administrators see everyone&apos;s.
+      </p>
       <div className="flex gap-2 items-center flex-wrap">
         <Select
           value={levelFilter || "all"}
