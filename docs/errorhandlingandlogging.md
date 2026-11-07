@@ -289,8 +289,16 @@ Phases 1–5 are merged. What differs from the plan above is listed here, so thi
 **Where the implementation differs from the plan**
 
 - **No per-category events.** The plan proposed an `error.<category>` event per category. The request line already carries `errorCategory` and `errorCode`, and a second line per failure would break "one line per failure". The level is chosen from the category instead: info-level categories write `http.request.refused`, other 4xx `http.request.client_error`, 5xx `http.request.failed`.
-- **The runtime log-level endpoint is not built.** `GET/PUT /sys/logging/levels` needs an administrator-only guard on `GET` as well, and the generated application's dictionary guard covers writes only. It deserves its own change.
 - **Enterprise Reporting keeps 4xx messages whole.** The generated application hides the message of an authorization or authentication refusal; Enterprise Reporting does not, because its SQL editor must say which table a person may not read. A 5xx never shows its cause in either product.
 - **Enterprise Reporting's spec is TypeScript** (`log-spec.ts`), not JSON, so that `ErrorCode` and `EventId` are unions the compiler checks. The 12 categories and their levels are the same, and a test holds them to the generated application's.
-- **`getLogger(channel).note(level, what)`** exists in Enterprise Reporting for the 347 free-text `console.*` calls it replaced. Its lines have a level an operator controls, but no event id; give them events as the code is touched.
-- **Not done:** OpenTelemetry trace ids and debug sampling (phase 6, optional), a `log-spec` schema check for Enterprise Reporting's `note` calls, and showing an ordinary user anything but their own rows in System Logs.
+- **Free text is gone from Enterprise Reporting.** The 344 `note()` calls became 207 events with a stable id per area and outcome (a `what` field names the operation) plus 110 deleted tracing lines, and `note()` itself was removed. The ids are per area, not per sentence; a call that is worth alerting on should get an event of its own.
+
+**Follow-ups, also merged**
+
+| Item | Repository | Pull request |
+|---|---|---|
+| Administrator-only runtime log levels (`/api/logging/levels`), trace ids from `traceparent`, `LOG_SAMPLE_DEBUG` | app-with-ai-tanstack | #277 |
+| The same three for Enterprise Reporting (`/api/admin/log-levels`) | enterprise_reporting_tanstack | #52 |
+| `note()` replaced by declared events; recipient addresses and generated passwords out of the log | enterprise_reporting_tanstack | #53 |
+
+**Still not done:** installing or configuring an OpenTelemetry SDK or collector (trace ids are read from a `traceparent` header, or from an active span when `@opentelemetry/api` is present; neither product depends on it), persisting level overrides across a restart (deliberately in memory), and showing an ordinary user more than their own rows in System Logs.
