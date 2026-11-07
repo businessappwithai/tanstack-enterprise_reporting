@@ -7,10 +7,12 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { RecordViewDialog } from "@/components/nl-query/RecordViewDialog";
 import { DataTable } from "@/components/reporting/data-table";
 import { FilterBar } from "@/components/reporting/filter-bar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ColumnDef } from "@tanstack/react-table";
+import { readApiError, retryUnlessRefused } from "@/lib/reporting/api-error";
 import { formatCellValue } from "@/lib/reporting/format-cell";
 import { parseRecordLinkConfig } from "@/lib/reporting/record-link";
 import type { ColumnDefinition, ReportDefinition } from "@/types/database";
@@ -41,16 +43,24 @@ function ReportViewerPage() {
     },
   });
 
-  const { data: reportData, isLoading: isLoadingData } = useQuery({
+  const {
+    data: reportData,
+    isLoading: isLoadingData,
+    error: dataError,
+  } = useQuery({
     queryKey: ["report-data", reportId, pageIndex, pageSize],
     queryFn: async () => {
       const res = await fetch(
         `/api/reports/${reportId}/data?page=${pageIndex}&pageSize=${pageSize}`
       );
+      // A refusal (403 naming the tables) or a failure must reach the screen, not become
+      // "No data": the body of an error has no `data`.
+      if (!res.ok) throw await readApiError(res, "Failed to load report data");
       const data = await res.json();
       return data.data;
     },
     enabled: !!report,
+    retry: retryUnlessRefused,
   });
 
   const exportMutation = useMutation({
@@ -288,6 +298,11 @@ function ReportViewerPage() {
         <CardContent>
           {isLoadingData ? (
             <Skeleton className="h-96 w-full" />
+          ) : dataError ? (
+            <Alert variant="destructive" data-testid="report-data-error">
+              <AlertTitle>This report could not be run</AlertTitle>
+              <AlertDescription>{(dataError as Error).message}</AlertDescription>
+            </Alert>
           ) : reportData?.rows?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No data available for this report</p>

@@ -5,6 +5,7 @@
  * Renders charts, reports, and metrics with WASM optimizations.
  */
 
+import { readApiError, retryUnlessRefused } from "@/lib/reporting/api-error";
 import { useQuery } from "@tanstack/react-query";
 import { ChartRenderer } from "@/components/charts/chart-renderer";
 import { useDuckDB } from "@/components/duckdb/DuckDBProvider";
@@ -47,6 +48,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
       return data.data;
     },
     enabled: widget.widget_type === "chart" && !!widget.chart_id,
+    retry: retryUnlessRefused,
     staleTime: 300000, // Cache for 5 minutes
   });
 
@@ -61,6 +63,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
       return data.data;
     },
     enabled: widget.widget_type === "report" && !!widget.report_id,
+    retry: retryUnlessRefused,
     staleTime: 300000,
   });
 
@@ -70,7 +73,11 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
   const filteredQuery = isWasmEnabled ? getFilteredQuery(widgetId, baseQuery) : baseQuery;
 
   // Fetch report data (server-side or WASM)
-  const { data: reportData, isLoading: isLoadingReport } = useQuery({
+  const {
+    data: reportData,
+    isLoading: isLoadingReport,
+    error: reportError,
+  } = useQuery({
     queryKey: ["report-data-for-widget", widget.report_id, filteredQuery],
     queryFn: async () => {
       if (!widget.report_id) return null;
@@ -93,16 +100,17 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
 
       // Fallback to server-side
       const res = await fetch(`/api/reports/${widget.report_id}/data?pageSize=100`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load report data`);
+      if (!res.ok) throw await readApiError(res, "Failed to load report data");
       const data = await res.json();
       return data;
     },
     enabled: widget.widget_type === "report" && !!widget.report_id,
+    retry: retryUnlessRefused,
     staleTime: 30000, // Cache for 30 seconds
   });
 
   // Fetch chart data (server-side or WASM)
-  const { data: chartData } = useQuery({
+  const { data: chartData, error: chartError } = useQuery({
     queryKey: ["chart-data-for-widget", widget.chart_id, filteredQuery],
     queryFn: async () => {
       if (!widget.chart_id) return null;
@@ -115,11 +123,12 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
 
       // Fallback to server-side
       const res = await fetch(`/api/charts/${widget.chart_id}/data`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load chart data`);
+      if (!res.ok) throw await readApiError(res, "Failed to load chart data");
       const data = await res.json();
       return data;
     },
     enabled: widget.widget_type === "chart" && !!widget.chart_id,
+    retry: retryUnlessRefused,
     staleTime: 30000,
   });
 
@@ -141,6 +150,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
   // Render widget content based on type
   switch (widget.widget_type) {
     case "chart":
+      if (chartError) return <WidgetError message={(chartError as Error).message} />;
       if (!chartData || !chartDef) {
         return (
           <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -191,6 +201,7 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
       }
 
     case "report":
+      if (reportError) return <WidgetError message={(reportError as Error).message} />;
       if (!reportData) {
         return (
           <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -264,4 +275,16 @@ export function WidgetCard({ widget, onFilterApply }: WidgetCardProps) {
         </div>
       );
   }
+}
+
+/** A tile that could not load says why — a refusal names the tables the role may not read. */
+function WidgetError({ message }: { message: string }) {
+  return (
+    <div
+      className="flex h-full items-center justify-center px-3 text-center text-sm text-destructive"
+      data-testid="widget-error"
+    >
+      {message}
+    </div>
+  );
 }
