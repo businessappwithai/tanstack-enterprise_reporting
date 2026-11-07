@@ -270,3 +270,27 @@ All of these paths are under `tanstack-enterprise_reporting/src/`.
   - a stopped external database gives `integration`/error with a `ref`.
 - System Logs filters by `ref`.
 - Stopping PostgreSQL does not crash the process (pool `error` listener) and produces no unbounded log growth (ring-buffer drops are counted).
+
+---
+
+## Status
+
+Phases 1–5 are merged. What differs from the plan above is listed here, so this document stays true.
+
+| Phase | Repository | Pull request |
+|---|---|---|
+| 1 — the contract (categories, error catalogue, spec validation) | app-with-ai-tanstack | #272 |
+| 2 — generated backend: `AppError`, classifier, filter, response hook | app-with-ai-tanstack | #273 |
+| 2b — Nest `Logger` and `console` swept off the backend templates | app-with-ai-tanstack | #274 |
+| 3 — generated front end: logger, error helpers, `/api/client-logs`, suite `02d` | app-with-ai-tanstack | #275 |
+| 4 — Enterprise Reporting: logger, sink, `AppError`, `withApiHandler`, `/api/sql/execute` | enterprise_reporting_tanstack | #49 |
+| 5 — Enterprise Reporting: all routes wrapped, `console.*` swept, System Logs filters | enterprise_reporting_tanstack | #50 |
+
+**Where the implementation differs from the plan**
+
+- **No per-category events.** The plan proposed an `error.<category>` event per category. The request line already carries `errorCategory` and `errorCode`, and a second line per failure would break "one line per failure". The level is chosen from the category instead: info-level categories write `http.request.refused`, other 4xx `http.request.client_error`, 5xx `http.request.failed`.
+- **The runtime log-level endpoint is not built.** `GET/PUT /sys/logging/levels` needs an administrator-only guard on `GET` as well, and the generated application's dictionary guard covers writes only. It deserves its own change.
+- **Enterprise Reporting keeps 4xx messages whole.** The generated application hides the message of an authorization or authentication refusal; Enterprise Reporting does not, because its SQL editor must say which table a person may not read. A 5xx never shows its cause in either product.
+- **Enterprise Reporting's spec is TypeScript** (`log-spec.ts`), not JSON, so that `ErrorCode` and `EventId` are unions the compiler checks. The 12 categories and their levels are the same, and a test holds them to the generated application's.
+- **`getLogger(channel).note(level, what)`** exists in Enterprise Reporting for the 347 free-text `console.*` calls it replaced. Its lines have a level an operator controls, but no event id; give them events as the code is touched.
+- **Not done:** OpenTelemetry trace ids and debug sampling (phase 6, optional), a `log-spec` schema check for Enterprise Reporting's `note` calls, and showing an ordinary user anything but their own rows in System Logs.
