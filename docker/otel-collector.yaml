@@ -1,0 +1,38 @@
+# OpenTelemetry Collector for the observability profile of docker-compose.
+#
+# The platform exports spans over OTLP/HTTP to this collector (OTEL_EXPORTER_OTLP_ENDPOINT=
+# http://otel-collector:4318). The collector batches them, prints a one-line summary of each batch
+# to its own log (`debug`), and forwards them to Jaeger, whose UI is on http://localhost:16686.
+#
+# To send traces somewhere else, replace the `otlp/jaeger` exporter: any OTLP backend takes
+# `otlp` or `otlphttp`, and the collector's contrib distribution has the vendor-specific ones.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Refuses data rather than letting a burst run the collector out of memory.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+  batch: {}
+
+exporters:
+  debug:
+    verbosity: basic
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug, otlp/jaeger]
