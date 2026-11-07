@@ -14,6 +14,9 @@ export interface RequestContext {
   requestId: string;
   userId?: string | null;
   route?: string;
+  /** From the caller's W3C `traceparent` header (or the active OpenTelemetry span). */
+  traceId?: string;
+  spanId?: string;
   /** What a route's own `catch` noted before it answered, for the request's one log line. */
   failure?: { err: unknown; note: string };
 }

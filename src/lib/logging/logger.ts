@@ -35,6 +35,7 @@ import {
   REDACT_KEYS,
 } from "./log-spec";
 import { currentRequestContext } from "./request-context";
+import { keepDebug, sampleRate } from "./trace-context";
 
 export type LogFields = Record<string, unknown>;
 
@@ -227,10 +228,41 @@ function toStack(value: unknown): string | null {
   return err?.stack ?? null;
 }
 
-function wrap(pinoLogger: PinoLogger, channel: string, level: ConfiguredLevel): ChannelLogger {
+/** Read once: the sampling rate does not change while the process runs. */
+const DEBUG_SAMPLE_RATE = sampleRate(typeof process !== "undefined" ? process.env.LOG_SAMPLE_DEBUG : undefined);
+
+/**
+ * The active OpenTelemetry span's ids, when an SDK is registered and `@opentelemetry/api` is
+ * installed. It is not a dependency of this platform: it is looked up once, only when
+ * `OTEL_EXPORTER_OTLP_ENDPOINT` or `LOG_TRACE_IDS=true` is set, and its absence is not an error.
+ */
+let otelApi: { trace?: { getActiveSpan?: () => { spanContext?: () => { traceId?: string; spanId?: string } } | undefined } } | undefined;
+let otelTried = false;
+
+function activeTrace(): { traceId: string; spanId: string } | undefined {
+  if (typeof process === "undefined") return undefined;
+  if (!otelTried) {
+    otelTried = true;
+    if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || process.env.LOG_TRACE_IDS === "true") {
+      try {
+        otelApi = require("@opentelemetry/api");
+      } catch {
+        otelApi = undefined;
+      }
+    }
+  }
+  const ids = otelApi?.trace?.getActiveSpan?.()?.spanContext?.();
+  if (!ids?.traceId || !ids.spanId || /^0+$/.test(ids.traceId)) return undefined;
+  return { traceId: ids.traceId, spanId: ids.spanId };
+}
+
+function wrap(pinoLogger: PinoLogger, channel: string, initial: ConfiguredLevel): ChannelLogger {
   return {
     channel,
-    level,
+    // Read from the Pino child, so a level set through the admin route is what this reports.
+    get level(): ConfiguredLevel {
+      return (pinoLogger.level as ConfiguredLevel) ?? initial;
+    },
     event(id, fields = {}) {
       const declared = (EVENTS as Record<string, { channel: string; level: LogLevel; message: string; fields: readonly string[] }>)[id];
       if (!declared) {
@@ -241,8 +273,24 @@ function wrap(pinoLogger: PinoLogger, channel: string, level: ConfiguredLevel): 
       }
 
       const context = currentRequestContext();
+      const level = pinoLogger.level as ConfiguredLevel;
+
+      // Debug and trace lines may be sampled (LOG_SAMPLE_DEBUG); a request is kept or dropped
+      // whole. Anything at warn or above is never asked.
+      if ((declared.level === "debug" || declared.level === "trace") && !keepDebug(context?.requestId, DEBUG_SAMPLE_RATE)) {
+        return;
+      }
+
+      const trace = context?.traceId ? undefined : activeTrace();
       const merged: LogFields = {
-        ...(context ? { requestId: context.requestId, userId: context.userId ?? null } : {}),
+        ...(context
+          ? {
+              requestId: context.requestId,
+              userId: context.userId ?? null,
+              ...(context.traceId && { traceId: context.traceId, spanId: context.spanId }),
+            }
+          : {}),
+        ...(trace ?? {}),
         ...fields,
       };
       const missing = declared.fields.filter((field) => merged[field] === undefined);
@@ -279,7 +327,7 @@ function wrap(pinoLogger: PinoLogger, channel: string, level: ConfiguredLevel): 
       this.event(`note.${noteLevel}` as EventId, { ...fields, what });
     },
     child(bindings) {
-      return wrap(pinoLogger.child(bindings), channel, level);
+      return wrap(pinoLogger.child(bindings), channel, pinoLogger.level as ConfiguredLevel);
     },
   };
 }
@@ -290,9 +338,72 @@ export function getLogger(channel: Channel): ChannelLogger {
   const cached = cache.get(channel);
   if (cached) return cached;
   const level = resolveLevel(channel);
-  const logger = wrap(getRoot().child({ channel }, { level: level === "silent" ? "silent" : level }), channel, level);
+  const child = getRoot().child({ channel }, { level: level === "silent" ? "silent" : level });
+  channelChildren.set(channel, child);
+  const logger = wrap(child, channel, level);
   cache.set(channel, logger);
   return logger;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Changing a level while running                                             */
+/* -------------------------------------------------------------------------- */
+
+/** The Pino child behind each channel, so its level can be changed in place. */
+const channelChildren = new Map<string, PinoLogger>();
+
+/** Levels set through the admin route. In memory only: a restart returns to the configured ones. */
+const overrides = new Map<string, string>();
+
+export interface ChannelLevelReport {
+  channel: string;
+  declared: string;
+  effective: string;
+  overridden: boolean;
+}
+
+export interface LevelChange {
+  channel: string;
+  from: string;
+  to: string;
+}
+
+export function isChannel(name: string): name is Channel {
+  return Object.hasOwn(CHANNELS, name);
+}
+
+export function isSettableLevel(value: unknown): value is ConfiguredLevel {
+  return isConfigured(value);
+}
+
+/** Every channel the spec declares, its configured level and what it logs at now. */
+export function getChannelLevels(): ChannelLevelReport[] {
+  return (Object.keys(CHANNELS) as Channel[]).map((channel) => ({
+    channel,
+    declared: CHANNELS[channel],
+    effective: String(getLogger(channel).level),
+    overridden: overrides.has(channel),
+  }));
+}
+
+export function setChannelLevel(channel: Channel, level: ConfiguredLevel): LevelChange {
+  const logger = getLogger(channel);
+  const from = String(logger.level);
+  const child = channelChildren.get(channel);
+  if (child) child.level = level;
+  overrides.set(channel, level);
+  return { channel, from, to: level };
+}
+
+/** Back to what the spec and the environment say. */
+export function resetChannelLevel(channel: Channel): LevelChange {
+  const logger = getLogger(channel);
+  const from = String(logger.level);
+  const configured = resolveLevel(channel);
+  const child = channelChildren.get(channel);
+  if (child) child.level = configured;
+  overrides.delete(channel);
+  return { channel, from, to: configured };
 }
 
 onDrop((dropped, reason) => {
@@ -408,5 +519,7 @@ export function resetLoggerForTesting(): void {
   root = undefined;
   legacy = undefined;
   cache.clear();
+  channelChildren.clear();
+  overrides.clear();
   processInstalled = false;
 }
