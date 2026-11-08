@@ -161,6 +161,10 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
     }
   };
 
+  // A role that holds none of the administration permissions gets no Administration section at
+  // all: a heading with nothing under it reads as a menu that failed to load.
+  const visibleAdminNavItems = adminNavItems.filter((item) => canView(item.permissionKey));
+
   const NavItem = ({
     href,
     label,
@@ -245,22 +249,24 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
             </nav>
           </div>
 
-          <Separator className="my-2" />
+          {visibleAdminNavItems.length > 0 && (
+            <>
+              <Separator className="my-2" />
 
-          <div className="px-3 py-1">
-            {!collapsed && (
-              <h2 className="mb-2 px-2 text-tremor-label font-medium uppercase tracking-wide text-tremor-content-subtle">
-                Administration
-              </h2>
-            )}
-            <nav className="space-y-0.5 px-2">
-              {adminNavItems
-                .filter((item) => canView(item.permissionKey))
-                .map((item) => (
-                  <NavItem key={item.href} {...item} />
-                ))}
-            </nav>
-          </div>
+              <div className="px-3 py-1">
+                {!collapsed && (
+                  <h2 className="mb-2 px-2 text-tremor-label font-medium uppercase tracking-wide text-tremor-content-subtle">
+                    Administration
+                  </h2>
+                )}
+                <nav className="space-y-0.5 px-2">
+                  {visibleAdminNavItems.map((item) => (
+                    <NavItem key={item.href} {...item} />
+                  ))}
+                </nav>
+              </div>
+            </>
+          )}
         </div>
       </ScrollArea>
 
