@@ -301,4 +301,6 @@ Phases 1–5 are merged. What differs from the plan above is listed here, so thi
 | The same three for Enterprise Reporting (`/api/admin/log-levels`) | enterprise_reporting_tanstack | #52 |
 | `note()` replaced by declared events; recipient addresses and generated passwords out of the log | enterprise_reporting_tanstack | #53 |
 
-**Still not done:** installing or configuring an OpenTelemetry SDK or collector (trace ids are read from a `traceparent` header, or from an active span when `@opentelemetry/api` is present; neither product depends on it), persisting level overrides across a restart (deliberately in memory), and showing an ordinary user more than their own rows in System Logs.
+**Since then:** OpenTelemetry tracing is optional in both products (set `OTEL_EXPORTER_OTLP_ENDPOINT`; the SDK is a pinned dependency, loaded lazily, with a collector + Jaeger `observability` compose profile), runtime level overrides survive a restart, and System Logs shows an ordinary user more than their own rows within the visibility rules in the code. Pull requests: enterprise_reporting_tanstack #55, #56, #57.
+
+**Still not done:** no auto-instrumentation of database or outgoing calls (only the request span), and the compose `observability` profile has not been run against a Docker daemon.
