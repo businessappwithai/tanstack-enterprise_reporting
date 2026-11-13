@@ -19,6 +19,17 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
 };
 
+// With CHAT_EMBED=1 the chat assistant, served from this same origin, shows this
+// platform's pages in a frame. Framing stays same-origin only; without the flag
+// nothing may frame the platform at all, as before.
+if (process.env.CHAT_EMBED === "1") {
+  SECURITY_HEADERS["Content-Security-Policy"] = (SECURITY_HEADERS["Content-Security-Policy"] ?? "").replace(
+    "frame-ancestors 'none'",
+    "frame-ancestors 'self'"
+  );
+  SECURITY_HEADERS["X-Frame-Options"] = "SAMEORIGIN";
+}
+
 const handler = createStartHandler(defaultStreamHandler);
 
 // Start background workers (Trigger.dev or on-premise cron runner)
@@ -31,6 +42,14 @@ initGraph()
 
 const fetch: RequestHandler<Register> = async (request, opts) => {
   await waitForDatabaseReady();
+
+  // Chat-only mode: outside the assistant's frame, a non-administrator is sent to the chat.
+  const { chatOnlyRedirect } = await import("@/lib/chat/chat-only");
+  const toChat = await chatOnlyRedirect(request);
+  if (toChat) {
+    return new Response(null, { status: 302, headers: { Location: toChat, "Cache-Control": "no-store" } });
+  }
+
   const response = await handler(request, opts);
 
   const headers = new Headers(response.headers);

@@ -519,6 +519,7 @@ export type AuditAction =
   | "adk:intent_classified"
   | "adk:pipeline_started"
   | "adk:pipeline_completed"
+  | "chat:delegated_sign_in"
   | "adk:pipeline_failed"
   | "adk:schema_introspected"
   | "adk:sql_generated"
