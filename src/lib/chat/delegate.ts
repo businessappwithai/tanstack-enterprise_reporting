@@ -20,10 +20,13 @@
  *    one there. A role *named* "admin" in a model never grants it;
  *  - an account that already exists here **with a password of its own** is a
  *    local account, managed here. The assistant never changes its roles, and
- *    signs in as it only for an application administrator — the one address
- *    both sides create for themselves (`admin@admin.com`). For anyone else a
- *    matching address is a coincidence the assistant must not turn into
- *    somebody's access, in either direction.
+ *    signs in as it only when both sides already agree the person is an
+ *    administrator: the application says so, and the local account holds the
+ *    platform's Administrator role. That is the address both sides create for
+ *    themselves (`admin@admin.com`), and it grants nothing new on either side.
+ *    In every other case a matching address is a coincidence the assistant
+ *    must not turn into somebody's access: an application administrator is not
+ *    signed in as an ordinary local user who happens to share their address.
  *
  * Every query they then run goes through `decideQueryRun` like anyone's.
  */
@@ -97,17 +100,18 @@ export async function syncDelegatedUser(db: Kysely<Database>, person: DelegatedP
       // here — an Administrator whose application account is ordinary would lose
       // the role at their first chat sign-in — and signing an ordinary
       // application user in as it would hand them whatever it holds.
-      if (!person.admin) {
-        throw new DelegationRefused(
-          "This address has its own account in the reporting platform. Sign in there directly."
-        );
-      }
       const held = await trx
         .selectFrom("user_roles")
         .innerJoin("roles", "roles.id", "user_roles.role_id")
         .select("roles.name")
         .where("user_roles.user_id", "=", user.id)
         .execute();
+      const administratorHere = held.some((role) => isPlatformAdminName(role.name));
+      if (!person.admin || !administratorHere) {
+        throw new DelegationRefused(
+          "This address has its own account in the reporting platform. Sign in there directly."
+        );
+      }
       return { userId: user.id, created: false, roles: held.map((role) => role.name) };
     }
 
