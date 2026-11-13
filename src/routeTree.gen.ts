@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiReportsRouteImport } from './routes/api/reports'
 import { Route as ApiQueriesRouteImport } from './routes/api/queries'
 import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
@@ -85,6 +86,7 @@ import { Route as ApiDataSourcesActiveRouteImport } from './routes/api/data-sour
 import { Route as ApiDataSourcesIdRouteImport } from './routes/api/data-sources/$id'
 import { Route as ApiDashboardsIdRouteImport } from './routes/api/dashboards/$id'
 import { Route as ApiCopilotkitSplatRouteImport } from './routes/api/copilotkit/$'
+import { Route as ApiChatDelegateRouteImport } from './routes/api/chat/delegate'
 import { Route as ApiChartsIdRouteImport } from './routes/api/charts/$id'
 import { Route as ApiAuthPermissionsRouteImport } from './routes/api/auth/permissions'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -154,6 +156,11 @@ const AuthedRoute = AuthedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiReportsRoute = ApiReportsRouteImport.update({
@@ -524,6 +531,11 @@ const ApiCopilotkitSplatRoute = ApiCopilotkitSplatRouteImport.update({
   path: '/api/copilotkit/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatDelegateRoute = ApiChatDelegateRouteImport.update({
+  id: '/api/chat/delegate',
+  path: '/api/chat/delegate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChartsIdRoute = ApiChartsIdRouteImport.update({
   id: '/api/charts/$id',
   path: '/api/charts/$id',
@@ -849,6 +861,7 @@ export interface FileRoutesByFullPath {
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/queries': typeof ApiQueriesRouteWithChildren
   '/api/reports': typeof ApiReportsRouteWithChildren
+  '/api/search': typeof ApiSearchRoute
   '/monitoring/create': typeof AuthedMonitoringCreateRoute
   '/settings/design-system': typeof AuthedSettingsDesignSystemRoute
   '/settings/ui': typeof AuthedSettingsUiRoute
@@ -860,6 +873,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/permissions': typeof ApiAuthPermissionsRoute
   '/api/charts/$id': typeof ApiChartsIdRouteWithChildren
+  '/api/chat/delegate': typeof ApiChatDelegateRoute
   '/api/copilotkit/$': typeof ApiCopilotkitSplatRoute
   '/api/dashboards/$id': typeof ApiDashboardsIdRouteWithChildren
   '/api/data-sources/$id': typeof ApiDataSourcesIdRouteWithChildren
@@ -982,6 +996,7 @@ export interface FileRoutesByTo {
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/queries': typeof ApiQueriesRouteWithChildren
   '/api/reports': typeof ApiReportsRouteWithChildren
+  '/api/search': typeof ApiSearchRoute
   '/monitoring/create': typeof AuthedMonitoringCreateRoute
   '/settings/design-system': typeof AuthedSettingsDesignSystemRoute
   '/settings/ui': typeof AuthedSettingsUiRoute
@@ -993,6 +1008,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/permissions': typeof ApiAuthPermissionsRoute
   '/api/charts/$id': typeof ApiChartsIdRouteWithChildren
+  '/api/chat/delegate': typeof ApiChatDelegateRoute
   '/api/copilotkit/$': typeof ApiCopilotkitSplatRoute
   '/api/dashboards/$id': typeof ApiDashboardsIdRouteWithChildren
   '/api/data-sources/$id': typeof ApiDataSourcesIdRouteWithChildren
@@ -1117,6 +1133,7 @@ export interface FileRoutesById {
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/queries': typeof ApiQueriesRouteWithChildren
   '/api/reports': typeof ApiReportsRouteWithChildren
+  '/api/search': typeof ApiSearchRoute
   '/_authed/monitoring/create': typeof AuthedMonitoringCreateRoute
   '/_authed/settings/design-system': typeof AuthedSettingsDesignSystemRoute
   '/_authed/settings/ui': typeof AuthedSettingsUiRoute
@@ -1128,6 +1145,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/permissions': typeof ApiAuthPermissionsRoute
   '/api/charts/$id': typeof ApiChartsIdRouteWithChildren
+  '/api/chat/delegate': typeof ApiChatDelegateRoute
   '/api/copilotkit/$': typeof ApiCopilotkitSplatRoute
   '/api/dashboards/$id': typeof ApiDashboardsIdRouteWithChildren
   '/api/data-sources/$id': typeof ApiDataSourcesIdRouteWithChildren
@@ -1252,6 +1270,7 @@ export interface FileRouteTypes {
     | '/api/notifications'
     | '/api/queries'
     | '/api/reports'
+    | '/api/search'
     | '/monitoring/create'
     | '/settings/design-system'
     | '/settings/ui'
@@ -1263,6 +1282,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/auth/permissions'
     | '/api/charts/$id'
+    | '/api/chat/delegate'
     | '/api/copilotkit/$'
     | '/api/dashboards/$id'
     | '/api/data-sources/$id'
@@ -1385,6 +1405,7 @@ export interface FileRouteTypes {
     | '/api/notifications'
     | '/api/queries'
     | '/api/reports'
+    | '/api/search'
     | '/monitoring/create'
     | '/settings/design-system'
     | '/settings/ui'
@@ -1396,6 +1417,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/auth/permissions'
     | '/api/charts/$id'
+    | '/api/chat/delegate'
     | '/api/copilotkit/$'
     | '/api/dashboards/$id'
     | '/api/data-sources/$id'
@@ -1519,6 +1541,7 @@ export interface FileRouteTypes {
     | '/api/notifications'
     | '/api/queries'
     | '/api/reports'
+    | '/api/search'
     | '/_authed/monitoring/create'
     | '/_authed/settings/design-system'
     | '/_authed/settings/ui'
@@ -1530,6 +1553,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/auth/permissions'
     | '/api/charts/$id'
+    | '/api/chat/delegate'
     | '/api/copilotkit/$'
     | '/api/dashboards/$id'
     | '/api/data-sources/$id'
@@ -1643,6 +1667,7 @@ export interface RootRouteChildren {
   ApiNotificationsRoute: typeof ApiNotificationsRoute
   ApiQueriesRoute: typeof ApiQueriesRouteWithChildren
   ApiReportsRoute: typeof ApiReportsRouteWithChildren
+  ApiSearchRoute: typeof ApiSearchRoute
   ApiAdkAnalyzeIntentRoute: typeof ApiAdkAnalyzeIntentRoute
   ApiAdminLogsPermissionsRoute: typeof ApiAdminLogsPermissionsRoute
   ApiAdminPermissionsRoute: typeof ApiAdminPermissionsRoute
@@ -1651,6 +1676,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAuthPermissionsRoute: typeof ApiAuthPermissionsRoute
   ApiChartsIdRoute: typeof ApiChartsIdRouteWithChildren
+  ApiChatDelegateRoute: typeof ApiChatDelegateRoute
   ApiCopilotkitSplatRoute: typeof ApiCopilotkitSplatRoute
   ApiDashboardsIdRoute: typeof ApiDashboardsIdRouteWithChildren
   ApiDataSourcesIdRoute: typeof ApiDataSourcesIdRouteWithChildren
@@ -1716,6 +1742,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/reports': {
@@ -2227,6 +2260,13 @@ declare module '@tanstack/react-router' {
       path: '/api/copilotkit/$'
       fullPath: '/api/copilotkit/$'
       preLoaderRoute: typeof ApiCopilotkitSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/delegate': {
+      id: '/api/chat/delegate'
+      path: '/api/chat/delegate'
+      fullPath: '/api/chat/delegate'
+      preLoaderRoute: typeof ApiChatDelegateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/charts/$id': {
@@ -2996,6 +3036,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiNotificationsRoute: ApiNotificationsRoute,
   ApiQueriesRoute: ApiQueriesRouteWithChildren,
   ApiReportsRoute: ApiReportsRouteWithChildren,
+  ApiSearchRoute: ApiSearchRoute,
   ApiAdkAnalyzeIntentRoute: ApiAdkAnalyzeIntentRoute,
   ApiAdminLogsPermissionsRoute: ApiAdminLogsPermissionsRoute,
   ApiAdminPermissionsRoute: ApiAdminPermissionsRoute,
@@ -3004,6 +3045,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAuthPermissionsRoute: ApiAuthPermissionsRoute,
   ApiChartsIdRoute: ApiChartsIdRouteWithChildren,
+  ApiChatDelegateRoute: ApiChatDelegateRoute,
   ApiCopilotkitSplatRoute: ApiCopilotkitSplatRoute,
   ApiDashboardsIdRoute: ApiDashboardsIdRouteWithChildren,
   ApiDataSourcesIdRoute: ApiDataSourcesIdRouteWithChildren,

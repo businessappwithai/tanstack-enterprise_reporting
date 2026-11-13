@@ -463,6 +463,41 @@ route's errors are `{ success: false, error: { code, message } }` throughout, an
 `generatedSql` is required in `executeNlQuery` and `useExecuteNlQuery` so a caller that
 forgets it fails to compile.
 
+### The chat assistant — delegated sign-in, search, embed and chat-only (`src/lib/chat/`)
+
+The orchestrator can put a chat assistant (`assistant/` there, open-source CopilotKit) in front of this
+platform and the generated application. A person signs in once, to the application; the assistant then
+asks this platform for a session for them. All of it is **off unless `CHAT_BRIDGE_SECRET` (≥ 32
+characters) is set**, and framing is off unless `CHAT_EMBED=1`.
+
+- **`POST /api/chat/delegate`** takes a statement signed with that secret (`statement.ts`: audience
+  `report-delegate`, 60 seconds, single use — `ReplayGuard`). It is not under `/api/auth/`, which is
+  Better Auth's. `delegate.ts` creates the person on first use (no password, so they cannot sign in
+  directly) and **re-syncs** `user_roles` and `ds_user_roles` to the roles whose names match their
+  application roles (`roleKey`: `sales_manager` = `Sales Manager`). A deactivated user is refused.
+- **An account that has a password of its own is never re-synced.** It is a local account, managed
+  here: re-syncing stripped the Administrator role from a platform administrator whose application
+  account was ordinary (a reviewer caught it). The assistant signs in as such an account only
+  when both sides already agree: the application says administrator **and** the local account holds
+  the Administrator role (`admin@admin.com`, which both sides create). Otherwise it is refused — an
+  application administrator is not signed in as an ordinary local user who shares their address.
+- **Administrator comes from the application's verdict (`admin: true`) and never from a name.**
+  `resource-guard.ts` reads any role whose name *contains* "admin" as an administrator, so a matched
+  role with such a name ("Administrator (model role)", "Office Administrator") is skipped. Do not
+  loosen `isPlatformAdminName` without changing that check first.
+- **The session cookie is written by hand** (`session-cookie.ts`), in Better Auth's own format, because
+  the session is created through its adapter rather than its sign-in endpoint. It was checked against a
+  running instance: the cookie is accepted, a tampered one is a 401.
+- **`GET /api/search?q=`** returns reports, charts, dashboards and saved queries by name, each kind only
+  when the caller's role grants its `:view`. Names and ids only — never SQL, never data.
+- **Embed mode** (`AppShell`): inside a frame the sidebar and header are left out. With `CHAT_EMBED=1`
+  `src/server.ts` sends `frame-ancestors 'self'` / `SAMEORIGIN`; without it, `'none'` / `DENY` as before.
+- **Chat-only mode** (`chat-only.ts`, called from `src/server.ts`): when the administrator's switch
+  (relayed by the assistant at `CHAT_SWITCHES_URL`) is on, a non-administrator's page load is served
+  only inside the frame with a genuine `chat_embed` cookie issued to them; otherwise it is redirected
+  to `CHAT_URL` (default `/chat/`). It is a lock on *where people work*, not what protects data —
+  `decideQueryRun` still does that — and it fails open when the assistant cannot be asked.
+
 ### Sharing — between the people who use the system first
 
 A share link (`/share/{dashboard,chart,report}/:id`) resolves through `resolveShareFn`

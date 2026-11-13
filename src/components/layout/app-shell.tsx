@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActiveDataSourceProvider } from "@/lib/hooks/use-active-datasource";
 import { cn } from "@/lib/utils";
 import { Header } from "./header";
@@ -15,9 +15,39 @@ interface AppShellProps {
   user: User;
 }
 
+/**
+ * True when this page is shown inside the chat assistant's frame. There the
+ * assistant is the navigation, so the sidebar and header are left out and the
+ * page fills the frame. Decided in the browser: a frame knows it is one, and
+ * that stays true as the person moves between pages inside it.
+ */
+function useEmbedded(): boolean {
+  const [embedded, setEmbedded] = useState(false);
+  useEffect(() => {
+    try {
+      setEmbedded(window.self !== window.top);
+    } catch {
+      // A cross-origin parent throws on access: that is a frame too.
+      setEmbedded(true);
+    }
+  }, []);
+  return embedded;
+}
+
 export function AppShell({ children, user }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const embedded = useEmbedded();
+
+  if (embedded) {
+    return (
+      <ActiveDataSourceProvider>
+        <div className="min-h-screen bg-tremor-background-muted" data-embedded="true">
+          <main className="p-4 md:p-6">{children}</main>
+        </div>
+      </ActiveDataSourceProvider>
+    );
+  }
 
   return (
     <ActiveDataSourceProvider>
