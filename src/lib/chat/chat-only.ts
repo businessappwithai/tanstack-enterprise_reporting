@@ -55,12 +55,17 @@ export async function chatSwitches(
   let value: Switches = cached?.value ?? { enabled: false, chatOnly: false };
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(1500) });
+    // The assistant answers 503 while it does not know yet (just restarted, nobody signed in
+    // since). That is "ask again", not "off": the last answer stands.
     if (response.ok) {
       const body = (await response.json()) as Partial<Switches>;
       value = { enabled: body.enabled === true, chatOnly: body.chatOnly === true };
     }
   } catch {
-    // Keep the last known answer; failing open here only removes a convenience lock, never a permission.
+    // Keep the last known answer. With none at all this is "not chat-only": the lock is on
+    // where people work, never on what they may read, and locking everyone out of the
+    // platform because another service is down is the worse failure. The assistant keeps
+    // its last reading across restarts so that this window is rare.
   }
   cached = { until: now + 20_000, value };
   return value;
@@ -87,8 +92,17 @@ export async function chatOnlyRedirect(request: Request): Promise<string | null>
   const switches = await chatSwitches();
   if (!switches.chatOnly) return null;
 
-  const { getSessionFromHeaders } = await import("@/lib/auth/session");
-  const session = await getSessionFromHeaders(request.headers).catch(() => null);
+  // "Could not check" is not "signed out". Only an outage is tolerated here — the page
+  // itself will say so — and anything else is a fault that must not pass for nobody
+  // being signed in, which would switch chat-only mode off for everyone without a word.
+  const { getSessionFromHeaders, SessionUnavailableError } = await import("@/lib/auth/session");
+  let session: Awaited<ReturnType<typeof getSessionFromHeaders>> = null;
+  try {
+    session = await getSessionFromHeaders(request.headers);
+  } catch (error) {
+    if (!(error instanceof SessionUnavailableError)) throw error;
+    return null;
+  }
   const roles = session?.user.roles ?? [];
   const permissions = session?.user.permissions ?? [];
   const embed = await verifyStatement(secret, cookieValue(request.headers.get("cookie"), "chat_embed"), "embed");

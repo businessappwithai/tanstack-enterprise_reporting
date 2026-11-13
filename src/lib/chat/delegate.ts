@@ -17,7 +17,13 @@
  *    `%%rbac` — and are re-synced on every delegation, so a role taken away in
  *    the application is gone here at the next one;
  *  - they are an administrator here only when the application says they are
- *    one there. A role *named* "admin" in a model never grants it.
+ *    one there. A role *named* "admin" in a model never grants it;
+ *  - an account that already exists here **with a password of its own** is a
+ *    local account, managed here. The assistant never changes its roles, and
+ *    signs in as it only for an application administrator — the one address
+ *    both sides create for themselves (`admin@admin.com`). For anyone else a
+ *    matching address is a coincidence the assistant must not turn into
+ *    somebody's access, in either direction.
  *
  * Every query they then run goes through `decideQueryRun` like anyone's.
  */
@@ -86,6 +92,23 @@ export async function syncDelegatedUser(db: Kysely<Database>, person: DelegatedP
     } else if (!user.is_active) {
       // Deactivated here by an administrator: the assistant does not get to undo that.
       throw new DelegationRefused("This account is deactivated in the reporting platform.");
+    } else if (await hasOwnPassword(trx, user.id)) {
+      // A local account. Re-syncing would strip roles an administrator granted
+      // here — an Administrator whose application account is ordinary would lose
+      // the role at their first chat sign-in — and signing an ordinary
+      // application user in as it would hand them whatever it holds.
+      if (!person.admin) {
+        throw new DelegationRefused(
+          "This address has its own account in the reporting platform. Sign in there directly."
+        );
+      }
+      const held = await trx
+        .selectFrom("user_roles")
+        .innerJoin("roles", "roles.id", "user_roles.role_id")
+        .select("roles.name")
+        .where("user_roles.user_id", "=", user.id)
+        .execute();
+      return { userId: user.id, created: false, roles: held.map((role) => role.name) };
     }
 
     const allRoles = await trx.selectFrom("roles").select(["id", "name"]).execute();
@@ -124,6 +147,24 @@ export async function syncDelegatedUser(db: Kysely<Database>, person: DelegatedP
 
     return { userId: user.id, created, roles: [...target.values()] };
   });
+}
+
+/**
+ * True for an account that can sign in here by itself: a credential Better
+ * Auth holds, or the legacy hash on the user row that bootstrap copies across.
+ * Accounts the assistant created have neither.
+ */
+async function hasOwnPassword(trx: Kysely<Database>, userId: string): Promise<boolean> {
+  const user = await trx.selectFrom("users").select("password_hash").where("id", "=", userId).executeTakeFirst();
+  if (user?.password_hash) return true;
+  const credential = await trx
+    .selectFrom("auth_accounts")
+    .select("id")
+    .where("user_id", "=", userId)
+    .where("provider_id", "=", "credential")
+    .where("password", "is not", null)
+    .executeTakeFirst();
+  return credential !== undefined;
 }
 
 /**

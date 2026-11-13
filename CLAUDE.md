@@ -475,6 +475,10 @@ characters) is set**, and framing is off unless `CHAT_EMBED=1`.
   Better Auth's. `delegate.ts` creates the person on first use (no password, so they cannot sign in
   directly) and **re-syncs** `user_roles` and `ds_user_roles` to the roles whose names match their
   application roles (`roleKey`: `sales_manager` = `Sales Manager`). A deactivated user is refused.
+- **An account that has a password of its own is never re-synced.** It is a local account, managed
+  here: re-syncing stripped the Administrator role from a platform administrator whose application
+  account was ordinary (a reviewer caught it). The assistant signs in as such an account only for an
+  application administrator — `admin@admin.com`, which both sides create — and is refused otherwise.
 - **Administrator comes from the application's verdict (`admin: true`) and never from a name.**
   `resource-guard.ts` reads any role whose name *contains* "admin" as an administrator, so a matched
   role with such a name ("Administrator (model role)", "Office Administrator") is skipped. Do not
