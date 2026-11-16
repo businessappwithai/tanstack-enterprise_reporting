@@ -25,6 +25,11 @@ const MIME_TYPES = {
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
   '.eot': 'application/vnd.ms-fontobject',
+  // WebAssembly.compileStreaming / instantiateStreaming refuse anything else, so DuckDB WASM
+  // (the Datasets page) never started when this fell through to application/octet-stream.
+  '.wasm': 'application/wasm',
+  '.map': 'application/json',
+  '.txt': 'text/plain',
 };
 
 // Import the main server
