@@ -52,6 +52,21 @@ export default defineConfig(({ mode }) => ({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // DuckDB's .wasm bundles were once served as application/octet-stream (fixed in
+        // server-static-wrapper.mjs), under `Cache-Control: immutable` for a year. Their
+        // names are content hashes and the bytes did not change, so any browser or CDN that
+        // fetched one then could keep the refused copy. A name of their own gives them new
+        // URLs, so those entries are never asked for again; caching stays immutable.
+        assetFileNames: (asset) =>
+          (asset.names ?? []).some((name) => name.endsWith('.wasm'))
+            ? 'assets/[name]-[hash].app.wasm'
+            : 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
   ssr: {
     noExternal: ['@tanstack/react-router', '@tanstack/react-start', /^@radix-ui/],
     // better-auth must NOT be bundled into the server build.
